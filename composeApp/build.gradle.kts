@@ -5,6 +5,8 @@ plugins {
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
     alias(libs.plugins.composeHotReload)
+    alias(libs.plugins.ksp)
+    alias(libs.plugins.androidx.room)
 }
 
 kotlin {
@@ -24,6 +26,8 @@ kotlin {
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
+            implementation(libs.androidx.room.runtime)
+            implementation(libs.androidx.sqlite.bundled)
         }
         jvmMain.dependencies {
             implementation(compose.desktop.currentOs)
@@ -43,4 +47,14 @@ compose.desktop {
             packageVersion = "1.0.0"
         }
     }
+}
+
+dependencies {
+    add("kspCommonMainMetadata", project(":composeApp"))
+    add("kspJvm", project(":composeApp"))
+    add("kspJvmTest", project(":composeApp"))
+}
+
+room {
+  schemaDirectory("$projectDir/schemas")
 }
