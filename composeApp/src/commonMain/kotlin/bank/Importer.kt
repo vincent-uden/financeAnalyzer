@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeContentPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -27,18 +28,26 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import colors
 import com.composables.core.ScrollArea
 import com.composables.core.VerticalScrollbar
 import com.composables.core.rememberScrollAreaState
 import com.composeunstyled.Text
 import com.composeunstyled.Thumb
 import com.composeunstyled.UnstyledButton
+import com.composeunstyled.theme.Theme
+import green
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import org.apache.poi.xssf.usermodel.XSSFWorkbook
+import red
+import background
+import backgroundLighter
+import text
 import java.io.File
 import java.math.BigDecimal
 import java.time.LocalDate
@@ -130,7 +139,7 @@ fun BankStatementImporter(db: AppDatabase) {
     Column(Modifier.safeContentPadding().fillMaxSize()) {
         Row(horizontalArrangement = Arrangement.SpaceAround, modifier = Modifier.fillMaxWidth()) {
             if (statement == null) {
-                UnstyledButton(onClick = {
+                UnstyledButton(modifier = Modifier.background(Theme[colors][green], RoundedCornerShape(8.dp)).padding(horizontal = 16.dp, vertical = 8.dp), onClick = {
                     val path = pickXlsxFile()
                     if (path != null) {
                         isLoading = true
@@ -147,13 +156,13 @@ fun BankStatementImporter(db: AppDatabase) {
                         }
                     }
                 }) {
-                    Text(if (isLoading) "Parsing..." else "Select XLSX File")
+                    Text(if (isLoading) "Parsing..." else "Select XLSX File", color = Theme[colors][text])
                 }
             } else {
-                UnstyledButton(onClick = {
+                UnstyledButton(modifier = Modifier.background(Theme[colors][red], RoundedCornerShape(8.dp)).padding(horizontal = 16.dp, vertical = 8.dp), onClick = {
                     statement = null
                 }) {
-                    Text("Cancel")
+                    Text("Cancel", color = Theme[colors][text])
                 }
 
             }
@@ -169,7 +178,7 @@ fun BankStatementImporter(db: AppDatabase) {
             val account = stmt.getAccount()
             Text("Account: ${account.name} (${account.clearingNumber} ${account.accountNumber})")
             Box(Modifier.fillMaxWidth().height(6.dp))
-            Row(Modifier.fillMaxWidth().background(Color.DarkGray).padding(8.dp)) {
+            Row(Modifier.fillMaxWidth().background(Theme[colors][backgroundLighter]).padding(8.dp)) {
                 Text("Date", Modifier.weight(2f), color = Color.White)
                 Text("Vendor", Modifier.weight(2f), color = Color.White)
                 Text("Amount (SEK)", Modifier.weight(1f), color = Color.White)
@@ -178,8 +187,8 @@ fun BankStatementImporter(db: AppDatabase) {
             ScrollArea(state = scrollAreaState, modifier = Modifier.weight(1f)) {
                 LazyColumn(state = lazyListState) {
                     itemsIndexed(stmt.getTransactions()) { index, trans ->
-                        val bgColor = if (index % 2 == 0) Color.White else Color.LightGray
-                        val amountColor = if (trans.amount > 0) Color.Green else Color.Red
+                        val bgColor = if (index % 2 == 0) Theme[colors][background] else Theme[colors][backgroundLighter]
+                        val amountColor = if (trans.amount > 0) Theme[colors][green] else Theme[colors][red]
                         Row(
                             Modifier.fillMaxWidth().background(bgColor)
                                 .padding(vertical = 4.dp, horizontal = 8.dp)
@@ -206,11 +215,11 @@ fun BankStatementImporter(db: AppDatabase) {
             }
             Box(Modifier.fillMaxWidth().height(6.dp))
             Row(horizontalArrangement = Arrangement.SpaceAround, modifier = Modifier.fillMaxWidth()) {
-                UnstyledButton(onClick = { scope.launch {
+                UnstyledButton(modifier = Modifier.background(Theme[colors][green], RoundedCornerShape(8.dp)).padding(horizontal = 16.dp, vertical = 8.dp), onClick = { scope.launch {
                     repo.importStatement(stmt)
                     statement = null
                 } }) {
-                    Text("Import")
+                    Text("Import", color = Theme[colors][text])
                 }
             }
         }
