@@ -26,6 +26,10 @@ kotlin {
             implementation(libs.androidx.room.runtime)
             implementation(libs.androidx.sqlite.bundled)
             implementation("org.apache.poi:poi-ooxml:5.2.5")
+            implementation("com.composables:composeunstyled:1.49.5")
+            implementation("com.composables:composeunstyled-theming:1.49.5")
+            implementation("com.composables:composeunstyled-primitives:1.49.5")
+            implementation("com.composables:composeunstyled-platformtheme:1.49.5")
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
@@ -58,5 +62,5 @@ dependencies {
 }
 
 room {
-  schemaDirectory("$projectDir/schemas")
+    schemaDirectory("$projectDir/schemas")
 }

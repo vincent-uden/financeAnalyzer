@@ -1,21 +1,23 @@
 package bank
 
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.safeContentPadding
+import androidx.compose.material.MaterialTheme
+import androidx.compose.material.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
 import androidx.room.ColumnInfo
 import androidx.room.Dao
-import androidx.room.Embedded
 import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Insert
 import androidx.room.PrimaryKey
 import androidx.room.Query
-import androidx.room.Relation
 import androidx.room.TypeConverter
 import org.apache.poi.xssf.usermodel.XSSFWorkbook
 import java.io.File
-import java.io.FileInputStream
 import java.math.BigDecimal
-import java.text.DateFormat
-import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -107,11 +109,23 @@ data class ImportedTransaction(
     val vendorName: String,
 )
 
+interface BankStatement {
+    fun getAccount(): Account
+    fun getTransactions(): List<ImportedTransaction>
+}
+
 @Suppress("SpellCheckingInspection")
-data class HandelsbankenStatement(
-    val account: Account,
-    val transactions: List<ImportedTransaction>,
-) {
+class HandelsbankenStatement(account: Account, transactions: List<ImportedTransaction>): BankStatement {
+    val _account: Account = account
+    val _transactions: List<ImportedTransaction> = transactions
+    override fun getAccount(): Account {
+        return _account
+    }
+
+    override fun getTransactions(): List<ImportedTransaction> {
+        return _transactions
+    }
+
     companion object {
         fun fromXlsx(path: String): HandelsbankenStatement {
             val workbook = XSSFWorkbook(File(path))
@@ -147,6 +161,15 @@ data class HandelsbankenStatement(
                     name = accountName,
                 ), transactions = transactionRows.filterNotNull()
             )
+        }
+    }
+}
+
+@Composable
+fun BankStatementImporter() {
+    Column(Modifier.safeContentPadding().fillMaxSize()) {
+        MaterialTheme {
+            Text("Bank Statement Importer")
         }
     }
 }
