@@ -168,8 +168,5 @@ class HandelsbankenStatement(account: Account, transactions: List<ImportedTransa
 @Composable
 fun BankStatementImporter() {
     Column(Modifier.safeContentPadding().fillMaxSize()) {
-        MaterialTheme {
-            Text("Bank Statement Importer")
-        }
     }
 }
