@@ -1,17 +1,29 @@
 import androidx.room.ConstructedBy
 import androidx.room.Database
+import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.RoomDatabaseConstructor
 import androidx.room.TypeConverters
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
+import bank.Account
+import bank.AccountDao
+import bank.BankStatement
 import bank.Converters
+import bank.Transaction
+import bank.TransactionDao
+import bank.Vendor
+import bank.VendorDao
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
-@Database(entities = [TodoEntity::class], version = 1)
+@Database(entities = [TodoEntity::class, Account::class, Transaction::class, Vendor::class], version = 2)
 @ConstructedBy(AppDatabaseConstructor::class)
 @TypeConverters(Converters::class)
-abstract class AppDatabase: RoomDatabase() {
-    abstract fun getDao() : TodoDao
+abstract class AppDatabase : RoomDatabase() {
+    abstract fun todoDao(): TodoDao
+    abstract fun accountDao(): AccountDao
+    abstract fun transactionDao(): TransactionDao
+    abstract fun vendorDao(): VendorDao
 }
 
 @Suppress("KotlinNoActualForExpect")
@@ -20,5 +32,38 @@ expect object AppDatabaseConstructor : RoomDatabaseConstructor<AppDatabase> {
 }
 
 fun getRoomDatabase(builder: RoomDatabase.Builder<AppDatabase>): AppDatabase {
-    return builder.setDriver(BundledSQLiteDriver()).setQueryCoroutineContext(Dispatchers.IO).build()
+    return builder.setDriver(BundledSQLiteDriver()).setQueryCoroutineContext(Dispatchers.IO).fallbackToDestructiveMigration(false).build()
+}
+
+class BankRepository(
+    private val accountDao: AccountDao,
+    private val transactionDao: TransactionDao,
+    private val vendorDao: VendorDao,
+) {
+    constructor(db: AppDatabase) : this(db.accountDao(), db.transactionDao(), db.vendorDao()) {}
+
+    suspend fun importStatement(stmt: BankStatement) = withContext(Dispatchers.IO) {
+        var account = accountDao.getByName(stmt.getAccount().name)
+        if (account == null) {
+            val id = accountDao.insert(stmt.getAccount())
+            account = accountDao.getById(id)
+        }
+
+        stmt.getTransactions().forEach { (transactionDate, amount, vendorName, saldo) ->
+            var vendor = vendorDao.getByName(vendorName)
+            if (vendor == null) {
+                val id = vendorDao.insert(Vendor(
+                    name = vendorName,
+                    userDefinedName = null
+                ))
+                vendor = vendorDao.getById(id)
+            }
+            transactionDao.insert(Transaction(
+                transactionDate = transactionDate,
+                amount = amount,
+                vendor = vendor!!.id,
+                account = account!!.id,
+            ))
+        }
+    }
 }

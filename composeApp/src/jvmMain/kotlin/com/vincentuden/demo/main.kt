@@ -2,6 +2,7 @@ package com.vincentuden.demo
 
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
+import getRoomDatabase
 
 fun main() = application {
     Window(
@@ -9,6 +10,7 @@ fun main() = application {
         title = "demo",
     ) {
         val databaseBuilder = getDatabaseBuilder()
-        App(databaseBuilder)
+        val db = getRoomDatabase(databaseBuilder)
+        App(db)
     }
 }

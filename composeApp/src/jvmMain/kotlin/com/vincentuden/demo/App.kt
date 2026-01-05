@@ -3,8 +3,6 @@ package com.vincentuden.demo
 import AppDatabase
 import TodoEntity
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -14,7 +12,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeContentPadding
 import androidx.compose.foundation.text.input.TextFieldState
-import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -34,12 +31,8 @@ import com.composeunstyled.TextField
 import com.composeunstyled.TextInput
 import com.composeunstyled.UnstyledButton
 import com.composeunstyled.platformtheme.buildPlatformTheme
-import com.composeunstyled.theme.buildTheme
-import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.ui.tooling.preview.Preview
 
-import demo.composeapp.generated.resources.Res
-import demo.composeapp.generated.resources.compose_multiplatform
 import getRoomDatabase
 import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDateTime
@@ -54,7 +47,7 @@ val AppTheme = buildPlatformTheme {
 
 @Composable
 @Preview
-fun App(dbBuilder: RoomDatabase.Builder<AppDatabase>) {
+fun App(db: AppDatabase) {
     val state = remember {
         TabGroupState(
             initialTab = "Front page",
@@ -77,10 +70,10 @@ fun App(dbBuilder: RoomDatabase.Builder<AppDatabase>) {
                 }
                 Row(modifier = Modifier.fillMaxWidth().height(16.dp)) {}
                 TabPanel(key = "Front page") {
-                    frontPage(dbBuilder)
+                    frontPage(db)
                 }
                 TabPanel(key = "Import XLSX") {
-                    BankStatementImporter()
+                    BankStatementImporter(db)
                 }
             }
         }
@@ -99,17 +92,16 @@ fun todaysDate(): String {
 
 
 @Composable
-fun frontPage(dbBuilder: RoomDatabase.Builder<AppDatabase>) {
+fun frontPage(db: AppDatabase) {
     var showContent by remember { mutableStateOf(false) }
     val todoTitle = remember { TextFieldState() }
     val todoContents = remember { TextFieldState() }
-    val db = remember { getRoomDatabase(dbBuilder) }
 
     val scope = rememberCoroutineScope()
     var todos by remember { mutableIntStateOf(0) }
 
     LaunchedEffect(true) {
-        todos = db.getDao().count()
+        todos = db.todoDao().count()
     }
     Column(
         modifier = Modifier
@@ -145,9 +137,9 @@ fun frontPage(dbBuilder: RoomDatabase.Builder<AppDatabase>) {
                 }
                 UnstyledButton(onClick = {
                     scope.launch {
-                        db.getDao()
+                        db.todoDao()
                             .insert(TodoEntity(title = todoTitle.toString(), content = todoContents.toString()))
-                        todos = db.getDao().count()
+                        todos = db.todoDao().count()
                     }
                 }) {
                     Text("Click me!")
