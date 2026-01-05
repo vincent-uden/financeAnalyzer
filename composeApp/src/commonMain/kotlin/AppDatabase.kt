@@ -2,11 +2,14 @@ import androidx.room.ConstructedBy
 import androidx.room.Database
 import androidx.room.RoomDatabase
 import androidx.room.RoomDatabaseConstructor
+import androidx.room.TypeConverters
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
+import bank.Converters
 import kotlinx.coroutines.Dispatchers
 
 @Database(entities = [TodoEntity::class], version = 1)
 @ConstructedBy(AppDatabaseConstructor::class)
+@TypeConverters(Converters::class)
 abstract class AppDatabase: RoomDatabase() {
     abstract fun getDao() : TodoDao
 }

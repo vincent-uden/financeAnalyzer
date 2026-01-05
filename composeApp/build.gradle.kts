@@ -25,6 +25,7 @@ kotlin {
             implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.7.1")
             implementation(libs.androidx.room.runtime)
             implementation(libs.androidx.sqlite.bundled)
+            implementation("org.apache.poi:poi-ooxml:5.2.5")
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)

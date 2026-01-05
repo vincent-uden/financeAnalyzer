@@ -22,6 +22,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.room.RoomDatabase
+import bank.HandelsbankenStatement
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.ui.tooling.preview.Preview
 
@@ -86,6 +87,9 @@ fun App(dbBuilder: RoomDatabase.Builder<AppDatabase>) {
                         Text("Click me!")
                     }
                 }
+            }
+            Button(onClick = { print(HandelsbankenStatement.fromXlsx("/home/vincent/Downloads/Handelsbanken_Account_Transactions_2026-01-05.xlsx")) }) {
+                Text("Import XLSX")
             }
         }
     }
