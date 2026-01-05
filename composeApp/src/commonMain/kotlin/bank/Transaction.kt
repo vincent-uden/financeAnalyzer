@@ -1,12 +1,21 @@
 package bank
 
+import androidx.compose.foundation.VerticalScrollbar
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeContentPadding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollbarAdapter
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
 import com.composeunstyled.Text
 import com.composeunstyled.UnstyledButton
 import androidx.compose.runtime.Composable
@@ -214,21 +223,29 @@ fun BankStatementImporter() {
             val account = stmt.getAccount()
             Text("Account: ${account.name} (${account.clearingNumber} ${account.accountNumber})")
             Text("Transactions:")
-            LazyColumn {
-                item {
-                    Row(Modifier.fillMaxWidth()) {
-                        Text("Date", Modifier.weight(1f))
-                        Text("Vendor", Modifier.weight(2f))
-                        Text("Amount (SEK)", Modifier.weight(1f))
+            Box(Modifier.fillMaxSize()) {
+                val state = rememberLazyListState()
+                LazyColumn(state = state, modifier = Modifier.fillMaxSize()) {
+                    item {
+                        Row(Modifier.fillMaxWidth().background(Color.DarkGray).padding(8.dp)) {
+                            Text("Date", Modifier.weight(1f), color = Color.White)
+                            Text("Vendor", Modifier.weight(2f), color = Color.White)
+                            Text("Amount (SEK)", Modifier.weight(1f), color = Color.White)
+                        }
+                    }
+                    itemsIndexed(stmt.getTransactions()) { index, trans ->
+                        val bgColor = if (index % 2 == 0) Color.White else Color.LightGray
+                        Row(Modifier.fillMaxWidth().background(bgColor).padding(vertical = 4.dp, horizontal = 8.dp)) {
+                            Text(trans.transactionDate.toString(), Modifier.weight(1f))
+                            Text(trans.vendorName, Modifier.weight(2f))
+                            Text(String.format("%.2f", trans.amount / 100.0), Modifier.weight(1f))
+                        }
                     }
                 }
-                items(stmt.getTransactions()) { trans ->
-                    Row(Modifier.fillMaxWidth()) {
-                        Text(trans.transactionDate.toString(), Modifier.weight(1f))
-                        Text(trans.vendorName, Modifier.weight(2f))
-                        Text(String.format("%.2f", trans.amount / 100.0), Modifier.weight(1f))
-                    }
-                }
+                VerticalScrollbar(
+                    adapter = rememberScrollbarAdapter(state),
+                    modifier = Modifier.align(Alignment.CenterEnd)
+                )
             }
         }
     }
