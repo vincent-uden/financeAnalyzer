@@ -1,6 +1,8 @@
 package com.vincentuden.demo
 
 import AppDatabase
+import androidx.room.Room
+import androidx.room.RoomDatabase
 import java.io.File
 
 fun getDatabaseBuilder(): RoomDatabase.Builder<AppDatabase> {

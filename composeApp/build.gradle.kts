@@ -23,6 +23,8 @@ kotlin {
             implementation(libs.androidx.lifecycle.viewmodelCompose)
             implementation(libs.androidx.lifecycle.runtimeCompose)
             implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.7.1")
+            implementation(libs.androidx.room.runtime)
+            implementation(libs.androidx.sqlite.bundled)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
@@ -50,9 +52,8 @@ compose.desktop {
 }
 
 dependencies {
-    add("kspCommonMainMetadata", project(":composeApp"))
-    add("kspJvm", project(":composeApp"))
-    add("kspJvmTest", project(":composeApp"))
+    add("kspCommonMainMetadata", libs.androidx.room.compiler)
+    add("kspJvm", libs.androidx.room.compiler)
 }
 
 room {
