@@ -17,15 +17,21 @@ import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.room.RoomDatabase
 import bank.BankStatementImporter
 import bank.HandelsbankenStatement
 import colors
+
 import com.composeunstyled.Tab
 import com.composeunstyled.TabGroup
 import com.composeunstyled.TabGroupState
@@ -63,6 +69,25 @@ import yellow
 import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
 
+
+
+@Composable
+fun TabText(text: String, isSelected: Boolean, thickness: Dp = 4.dp) {
+    val cyanColor = Theme[colors][cyan]
+    val cornerRadius = thickness / 2
+    val paddingBottom = thickness + 4.dp
+    Text(modifier = Modifier.padding(bottom = paddingBottom).drawBehind {
+        if (isSelected) {
+            drawRoundRect(
+                color = cyanColor,
+                topLeft = Offset(0f, size.height + paddingBottom.toPx() - thickness.toPx()),
+                size = Size(size.width, thickness.toPx()),
+                cornerRadius = CornerRadius(cornerRadius.toPx())
+            )
+        }
+    }, text = text)
+}
+
 val AppTheme = buildPlatformTheme {
     properties[colors] = mapOf(
         foreground to Color(0xFFC0CAF5),
@@ -96,14 +121,15 @@ fun App(db: AppDatabase) {
     AppTheme {
         Box(modifier = Modifier.background(Theme[colors][background])) {
             Column(modifier = Modifier.padding(12.dp).fillMaxWidth()) {
+                val cyanColor = Theme[colors][cyan]
                 TabGroup(state) {
                     TabList(modifier = Modifier.safeContentPadding()) {
                         Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
                             Tab(key = "Front page") {
-                                Text("Front page")
+                                TabText("Front page", state.selectedTab == "Front page")
                             }
                             Tab(key = "Import XLSX") {
-                                Text("Import XLSX")
+                                TabText("Import XLSX", state.selectedTab == "Import XLSX")
                             }
                         }
                     }
