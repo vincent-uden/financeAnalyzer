@@ -22,6 +22,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.room.RoomDatabase
+import bank.BankStatementImporter
 import bank.HandelsbankenStatement
 import com.composeunstyled.Tab
 import com.composeunstyled.TabGroup
@@ -79,7 +80,7 @@ fun App(dbBuilder: RoomDatabase.Builder<AppDatabase>) {
                     frontPage(dbBuilder)
                 }
                 TabPanel(key = "Import XLSX") {
-                    Text("Import")
+                    BankStatementImporter()
                 }
             }
         }

@@ -1,12 +1,23 @@
 package bank
 
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.safeContentPadding
-import androidx.compose.material.MaterialTheme
-import androidx.compose.material.Text
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import com.composeunstyled.Text
+import com.composeunstyled.UnstyledButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import androidx.room.ColumnInfo
 import androidx.room.Dao
 import androidx.room.Entity
@@ -165,8 +176,60 @@ class HandelsbankenStatement(account: Account, transactions: List<ImportedTransa
     }
 }
 
+expect fun pickXlsxFile(): String?
+
 @Composable
 fun BankStatementImporter() {
     Column(Modifier.safeContentPadding().fillMaxSize()) {
+        var statement by remember { mutableStateOf<HandelsbankenStatement?>(null) }
+        var isLoading by remember { mutableStateOf(false) }
+        var error by remember { mutableStateOf<String?>(null) }
+        val scope = rememberCoroutineScope()
+
+        UnstyledButton(onClick = {
+            val path = pickXlsxFile()
+            if (path != null) {
+                isLoading = true
+                error = null
+                scope.launch(Dispatchers.IO) {
+                    try {
+                        val stmt = HandelsbankenStatement.fromXlsx(path)
+                        statement = stmt
+                    } catch (e: Exception) {
+                        error = e.localizedMessage ?: "Failed to parse file"
+                    } finally {
+                        isLoading = false
+                    }
+                }
+            }
+        }) {
+            Text(if (isLoading) "Parsing..." else "Select XLSX File")
+        }
+
+        error?.let {
+            Text("Error: $it")
+        }
+
+        statement?.let { stmt ->
+            val account = stmt.getAccount()
+            Text("Account: ${account.name} (${account.clearingNumber} ${account.accountNumber})")
+            Text("Transactions:")
+            LazyColumn {
+                item {
+                    Row(Modifier.fillMaxWidth()) {
+                        Text("Date", Modifier.weight(1f))
+                        Text("Vendor", Modifier.weight(2f))
+                        Text("Amount (SEK)", Modifier.weight(1f))
+                    }
+                }
+                items(stmt.getTransactions()) { trans ->
+                    Row(Modifier.fillMaxWidth()) {
+                        Text(trans.transactionDate.toString(), Modifier.weight(1f))
+                        Text(trans.vendorName, Modifier.weight(2f))
+                        Text(String.format("%.2f", trans.amount / 100.0), Modifier.weight(1f))
+                    }
+                }
+            }
+        }
     }
 }
