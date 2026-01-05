@@ -8,6 +8,7 @@ fun main() = application {
         onCloseRequest = ::exitApplication,
         title = "demo",
     ) {
-        App()
+        val databaseBuilder = getDatabaseBuilder()
+        App(databaseBuilder)
     }
 }
