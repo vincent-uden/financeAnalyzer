@@ -206,7 +206,10 @@ fun BankStatementImporter(db: AppDatabase) {
             }
             Box(Modifier.fillMaxWidth().height(6.dp))
             Row(horizontalArrangement = Arrangement.SpaceAround, modifier = Modifier.fillMaxWidth()) {
-                UnstyledButton(onClick = { scope.launch { repo.importStatement(stmt) } }) {
+                UnstyledButton(onClick = { scope.launch {
+                    repo.importStatement(stmt)
+                    statement = null
+                } }) {
                     Text("Import")
                 }
             }

@@ -15,6 +15,7 @@ import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -31,6 +32,8 @@ import com.composeunstyled.TextField
 import com.composeunstyled.TextInput
 import com.composeunstyled.UnstyledButton
 import com.composeunstyled.platformtheme.buildPlatformTheme
+import com.composeunstyled.theme.ThemeProperty
+import com.composeunstyled.theme.ThemeToken
 import org.jetbrains.compose.ui.tooling.preview.Preview
 
 import getRoomDatabase
@@ -41,8 +44,40 @@ import kotlinx.datetime.toLocalDateTime
 import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
 
-val AppTheme = buildPlatformTheme {
+val colors = ThemeProperty<Color>("colors")
+val foreground = ThemeToken<Color>("background")
+val background = ThemeToken<Color>("background")
+val text = ThemeToken<Color>("text")
+val cursor = ThemeToken<Color>("cursor")
+val black = ThemeToken<Color>("black")
+val red = ThemeToken<Color>("red")
+val green = ThemeToken<Color>("green")
+val yellow = ThemeToken<Color>("yellow")
+val blue = ThemeToken<Color>("blue")
+val magenta = ThemeToken<Color>("magenta")
+val cyan = ThemeToken<Color>("cyan")
+val white = ThemeToken<Color>("white")
 
+val AppTheme = buildPlatformTheme {
+    properties[colors] = mapOf(
+        // Primary
+        foreground to Color("#c0caf5"),
+        background to Color("#1a1b26"),
+
+        // Cursor
+        text to Color("#1a1b26"),
+        cursor to Color("#c0caf5"),
+
+        // Normal
+        black to Color("#15161e"),
+        red to Color("#f7768e"),
+        green to Color("#9ece6a"),
+        yellow to Color("#e0af68"),
+        blue to Color("#7aa2f7"),
+        magenta to Color("#bb9af7"),
+        cyan to Color("#7dcfff"),
+        white to Color("#a9b1d6"),
+    )
 }
 
 @Composable
