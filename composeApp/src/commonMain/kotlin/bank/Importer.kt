@@ -2,7 +2,6 @@ package bank
 
 import AppDatabase
 import BankRepository
-import androidx.compose.foundation.VerticalScrollbar
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -15,11 +14,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeContentPadding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.rememberScrollbarAdapter
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -28,7 +25,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -38,7 +34,6 @@ import com.composables.core.VerticalScrollbar
 import com.composables.core.rememberScrollAreaState
 import com.composeunstyled.Text
 import com.composeunstyled.Thumb
-import com.composeunstyled.UnstyledButton
 import com.composeunstyled.theme.Theme
 import green
 import kotlinx.coroutines.Dispatchers
@@ -47,7 +42,6 @@ import org.apache.poi.xssf.usermodel.XSSFWorkbook
 import red
 import background
 import backgroundLighter
-import text
 import java.io.File
 import java.math.BigDecimal
 import java.time.LocalDate
@@ -139,7 +133,7 @@ fun BankStatementImporter(db: AppDatabase) {
     Column(Modifier.safeContentPadding().fillMaxSize()) {
         Row(horizontalArrangement = Arrangement.SpaceAround, modifier = Modifier.fillMaxWidth()) {
             if (statement == null) {
-                UnstyledButton(modifier = Modifier.background(Theme[colors][green], RoundedCornerShape(8.dp)).padding(horizontal = 16.dp, vertical = 8.dp), onClick = {
+                AppButton(content = if (isLoading) "Parsing..." else "Select XLSX File", onClick = {
                     val path = pickXlsxFile()
                     if (path != null) {
                         isLoading = true
@@ -155,15 +149,11 @@ fun BankStatementImporter(db: AppDatabase) {
                             }
                         }
                     }
-                }) {
-                    Text(if (isLoading) "Parsing..." else "Select XLSX File", color = Theme[colors][text])
-                }
+                })
             } else {
-                UnstyledButton(modifier = Modifier.background(Theme[colors][red], RoundedCornerShape(8.dp)).padding(horizontal = 16.dp, vertical = 8.dp), onClick = {
+                AppButton(content = "Cancel", onClick = {
                     statement = null
-                }) {
-                    Text("Cancel", color = Theme[colors][text])
-                }
+                }, type = AppButtonVariant.DANGER)
 
             }
         }
@@ -215,12 +205,10 @@ fun BankStatementImporter(db: AppDatabase) {
             }
             Box(Modifier.fillMaxWidth().height(6.dp))
             Row(horizontalArrangement = Arrangement.SpaceAround, modifier = Modifier.fillMaxWidth()) {
-                UnstyledButton(modifier = Modifier.background(Theme[colors][green], RoundedCornerShape(8.dp)).padding(horizontal = 16.dp, vertical = 8.dp), onClick = { scope.launch {
+                AppButton(content = "Import", onClick = { scope.launch {
                     repo.importStatement(stmt)
                     statement = null
-                } }) {
-                    Text("Import", color = Theme[colors][text])
-                }
+                } })
             }
         }
     }
