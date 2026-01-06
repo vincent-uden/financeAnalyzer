@@ -140,6 +140,8 @@ data class Transaction(
     @ColumnInfo(index = true) val vendor: Long,
     @ColumnInfo(index = true) val account: Long,
     @ColumnInfo(index = true) val categoryId: Long?,
+    // The account balance after this transaction * 100 in SEK
+    val balance: Long? = null,
 )
 
 data class TransactionWithCategory(
@@ -152,6 +154,7 @@ data class TransactionWithCategory(
     val categoryName: String?,
     val vendorName: String?,
     val accountName: String?,
+    val balance: Long?,
 )
 
 data class AccountBalance(
@@ -185,7 +188,7 @@ interface TransactionDao {
     @Query("SELECT t.*, c.name as categoryName, v.name as vendorName, a.name as accountName FROM `Transaction` t LEFT JOIN Category c ON t.categoryId = c.id LEFT JOIN Vendor v ON t.vendor = v.id LEFT JOIN Account a ON t.account = a.id ORDER BY t.transactionDate DESC")
     suspend fun getAllWithCategories(): List<TransactionWithCategory>
 
-    @Query("SELECT a.id as accountId, a.name as accountName, COALESCE(SUM(t.amount), 0) as balance FROM Account a LEFT JOIN `Transaction` t ON a.id = t.account GROUP BY a.id, a.name")
+    @Query("SELECT a.id as accountId, a.name as accountName, COALESCE((SELECT t.balance FROM `Transaction` t WHERE t.account = a.id AND t.balance IS NOT NULL ORDER BY t.transactionDate DESC LIMIT 1), COALESCE(SUM(t.amount), 0)) as balance FROM Account a LEFT JOIN `Transaction` t ON a.id = t.account GROUP BY a.id, a.name")
     suspend fun getAccountBalances(): List<AccountBalance>
 
     @Query("SELECT COALESCE(c.name, 'Uncategorized') as categoryName, SUM(-t.amount) as total FROM `Transaction` t LEFT JOIN Category c ON t.categoryId = c.id WHERE t.transactionDate >= :startDate AND t.transactionDate < :endDate AND t.amount < 0 AND t.account IN (:accountIds) GROUP BY t.categoryId ORDER BY total DESC")

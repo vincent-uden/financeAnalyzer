@@ -22,7 +22,7 @@ import bank.VendorWithCategory
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-@Database(entities = [TodoEntity::class, Account::class, Transaction::class, Vendor::class, Category::class], version = 4)
+@Database(entities = [TodoEntity::class, Account::class, Transaction::class, Vendor::class, Category::class], version = 5)
 @ConstructedBy(AppDatabaseConstructor::class)
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
@@ -73,6 +73,7 @@ class BankRepository(
                 vendor = vendor!!.id,
                 account = account!!.id,
                 categoryId = vendor.categoryId,
+                balance = saldo,
             ))
         }
     }
@@ -109,7 +110,8 @@ class BankRepository(
                 amount = transaction.amount,
                 vendor = transaction.vendor,
                 account = transaction.account,
-                categoryId = vendor.categoryId
+                categoryId = vendor.categoryId,
+                balance = transaction.balance
             ))
         }
     }
