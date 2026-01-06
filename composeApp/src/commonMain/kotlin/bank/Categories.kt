@@ -66,6 +66,12 @@ import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
+// Data class for undo/redo batches
+data class DeletedBatch(
+    val timestamp: Long,
+    val transactions: List<TransactionWithCategory>
+)
+
 @Composable
 fun CategoriesView(db: AppDatabase) {
     var categories by remember { mutableStateOf<List<Category>>(emptyList()) }
@@ -76,6 +82,19 @@ fun CategoriesView(db: AppDatabase) {
     var selectedCategoryIds by remember { mutableStateOf<Set<Long?>>(emptySet()) }
     var selectedVendorIds by remember { mutableStateOf<Set<Long>>(emptySet()) }
     var isShiftPressed by remember { mutableStateOf(false) }
+    var isCtrlPressed by remember { mutableStateOf(false) }
+
+    // Transaction selection state
+    var selectedTransactionIds by remember { mutableStateOf<Set<Long>>(emptySet()) }
+    var lastClickedIndex by remember { mutableStateOf<Int?>(null) }
+    var selectionAnchorIndex by remember { mutableStateOf<Int?>(null) }
+
+    // Undo/redo state
+    var undoStack by remember { mutableStateOf<List<DeletedBatch>>(emptyList()) }
+    var redoStack by remember { mutableStateOf<List<DeletedBatch>>(emptyList()) }
+
+    // Dialog state
+    var showDeleteConfirmation by remember { mutableStateOf(false) }
     val vendorCategoryMap = remember(vendors) { vendors.associate { it.id to it.categoryId } }
     val scope = rememberCoroutineScope()
     val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
@@ -105,6 +124,58 @@ fun CategoriesView(db: AppDatabase) {
         }
     }
 
+    // Undo/Redo functions
+    val performUndo = {
+        if (undoStack.isNotEmpty()) {
+            val batch = undoStack.last()
+            undoStack = undoStack.dropLast(1)
+            redoStack = redoStack + batch
+
+            // Restore transactions to database
+            scope.launch {
+                batch.transactions.forEach { transaction ->
+                    repo.insertTransaction(Transaction(
+                        id = transaction.id,
+                        transactionDate = transaction.transactionDate,
+                        amount = transaction.amount,
+                        vendor = transaction.vendor,
+                        account = transaction.account,
+                        categoryId = transaction.categoryId
+                    ))
+                }
+                reloadTransactions()
+                reloadVendors()
+                reloadCategories()
+            }
+        }
+    }
+
+    val performRedo = {
+        if (redoStack.isNotEmpty()) {
+            val batch = redoStack.last()
+            redoStack = redoStack.dropLast(1)
+            undoStack = undoStack + batch
+
+            // Delete transactions from database
+            scope.launch {
+                batch.transactions.forEach { transaction ->
+                    val transactionToDelete = Transaction(
+                        id = transaction.id,
+                        transactionDate = transaction.transactionDate,
+                        amount = transaction.amount,
+                        vendor = transaction.vendor,
+                        account = transaction.account,
+                        categoryId = transaction.categoryId
+                    )
+                    repo.deleteTransaction(transactionToDelete)
+                }
+                reloadTransactions()
+                reloadVendors()
+                reloadCategories()
+            }
+        }
+    }
+
     // Filter transactions based on selected categories and vendors
     val filteredTransactions = remember(transactions, selectedCategoryIds, selectedVendorIds) {
         transactions.filter { trans ->
@@ -129,6 +200,51 @@ fun CategoriesView(db: AppDatabase) {
                         true
                     }
                     else -> false
+                }
+            }
+            Key.CtrlLeft, Key.CtrlRight -> {
+                when (keyEvent.type) {
+                    KeyEventType.KeyDown -> {
+                        isCtrlPressed = true
+                        true
+                    }
+                    KeyEventType.KeyUp -> {
+                        isCtrlPressed = false
+                        true
+                    }
+                    else -> false
+                }
+            }
+            Key.Delete, Key.Backspace -> {
+                if (keyEvent.type == KeyEventType.KeyDown && selectedTransactionIds.isNotEmpty()) {
+                    showDeleteConfirmation = true
+                    true
+                } else {
+                    false
+                }
+            }
+            Key.Z -> {
+                if (keyEvent.type == KeyEventType.KeyDown && isCtrlPressed) {
+                    if (isShiftPressed) {
+                        // Ctrl+Shift+Z - Redo
+                        performRedo()
+                        true
+                    } else {
+                        // Ctrl+Z - Undo
+                        performUndo()
+                        true
+                    }
+                } else {
+                    false
+                }
+            }
+            Key.Y -> {
+                if (keyEvent.type == KeyEventType.KeyDown && isCtrlPressed) {
+                    // Ctrl+Y - Redo (alternative)
+                    performRedo()
+                    true
+                } else {
+                    false
                 }
             }
             else -> false
@@ -225,8 +341,25 @@ fun CategoriesView(db: AppDatabase) {
         // Main area for transactions
         Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
             Column(modifier = Modifier.fillMaxSize().padding(8.dp)) {
-                // Clear Filters button
-                Row(modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp), horizontalArrangement = Arrangement.End) {
+                // Top row with Undo/Redo and Clear Filters
+                Row(modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+                    // Undo/Redo buttons
+                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        AppButton(
+                            content = "Undo",
+                            onClick = { performUndo() },
+                            type = AppButtonVariant.CONFIRM,
+                            enabled = undoStack.isNotEmpty()
+                        )
+                        AppButton(
+                            content = "Redo",
+                            onClick = { performRedo() },
+                            type = AppButtonVariant.CONFIRM,
+                            enabled = redoStack.isNotEmpty()
+                        )
+                    }
+
+                    // Clear Filters button
                     AppButton(
                         content = "Clear Filters",
                         onClick = {
@@ -236,7 +369,17 @@ fun CategoriesView(db: AppDatabase) {
                         type = AppButtonVariant.CONFIRM
                     )
                 }
-                Text("Transactions", modifier = Modifier.padding(bottom = 8.dp))
+
+                // Transactions header with selection count
+                Row(modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text("Transactions")
+                    if (selectedTransactionIds.isNotEmpty()) {
+                        Text(
+                            "${selectedTransactionIds.size} selected",
+                            color = Theme[colors][green]
+                        )
+                    }
+                }
                 Row(
                     modifier = Modifier.fillMaxWidth().background(Color(0xFF35374B)).padding(8.dp),
                     horizontalArrangement = Arrangement.spacedBy(4.dp)
@@ -254,11 +397,42 @@ fun CategoriesView(db: AppDatabase) {
                 }
                 LazyColumn(modifier = Modifier.weight(1f)) {
                     itemsIndexed(filteredTransactions) { index, trans ->
-                        val bgColor = if (index % 2 == 0) Color(0xFF1A1B26) else Color(0xFF35374B)
+                        val isSelected = trans.id in selectedTransactionIds
+                        val baseBgColor = if (index % 2 == 0) Color(0xFF1A1B26) else Color(0xFF35374B)
+                        val bgColor = if (isSelected) Color(0xFF4A5568) else baseBgColor
                         val amountColor = if (trans.amount > 0) Theme[colors][green] else Theme[colors][red]
+
                         Row(
                             modifier = Modifier.fillMaxWidth().background(bgColor)
-                                .padding(vertical = 4.dp, horizontal = 8.dp),
+                                .padding(vertical = 4.dp, horizontal = 8.dp)
+                                .clickable {
+                                    // Handle selection based on modifier keys
+                                    when {
+                                        isShiftPressed && selectionAnchorIndex != null -> {
+                                            // Range selection from anchor to current
+                                            val startIndex = minOf(selectionAnchorIndex!!, index)
+                                            val endIndex = maxOf(selectionAnchorIndex!!, index)
+                                            val rangeIds = filteredTransactions.subList(startIndex, endIndex + 1).map { it.id }.toSet()
+                                            selectedTransactionIds = rangeIds
+                                            lastClickedIndex = index
+                                        }
+                                        isCtrlPressed -> {
+                                            // Toggle this transaction
+                                            selectedTransactionIds = if (trans.id in selectedTransactionIds) {
+                                                selectedTransactionIds - trans.id
+                                            } else {
+                                                selectedTransactionIds + trans.id
+                                            }
+                                            // Don't update anchor for Ctrl+click
+                                        }
+                                        else -> {
+                                            // Single selection
+                                            selectedTransactionIds = setOf(trans.id)
+                                            lastClickedIndex = index
+                                            selectionAnchorIndex = index
+                                        }
+                                    }
+                                },
                             horizontalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
                             Text(
@@ -291,44 +465,6 @@ fun CategoriesView(db: AppDatabase) {
                         }
                     }
                 }
-            }
-
-            // Unified category selection overlay
-            if (selectedTransactionId != null || selectedVendorId != null) {
-                val modalTitle = if (selectedTransactionId != null) {
-                    "Select Category for Transaction"
-                } else {
-                    val vendor = vendors.find { it.id == selectedVendorId }
-                    "Select Category for Vendor: ${vendor?.name ?: "Unknown"}"
-                }
-
-                val onCategorySelected: suspend (Long?) -> Unit = { catId ->
-                    if (selectedTransactionId != null) {
-                        val trans = repo.getTransactionById(selectedTransactionId!!)
-                        if (trans != null) {
-                            repo.updateTransaction(trans.copy(categoryId = catId))
-                            reloadTransactions()
-                        }
-                    } else if (selectedVendorId != null) {
-                        repo.setVendorCategory(selectedVendorId!!, catId)
-                        reloadVendors()
-                        reloadTransactions()
-                    }
-                    selectedTransactionId = null
-                    selectedVendorId = null
-                }
-
-                val onCancel = {
-                    selectedTransactionId = null
-                    selectedVendorId = null
-                }
-
-                CategorySelectionModal(
-                    title = modalTitle,
-                    categories = categories,
-                    onCategorySelected = onCategorySelected,
-                    onCancel = onCancel
-                )
             }
         }
 
@@ -369,9 +505,126 @@ fun CategoriesView(db: AppDatabase) {
                             selectedVendorId = vendor.id
                         }) {
                             Text("Edit")
-                        }
                     }
                 }
+            }
+        }
+    }
+}
+
+            // Unified category selection overlay
+            if (selectedTransactionId != null || selectedVendorId != null) {
+                val modalTitle = if (selectedTransactionId != null) {
+                    "Select Category for Transaction"
+                } else {
+                    val vendor = vendors.find { it.id == selectedVendorId }
+                    "Select Category for Vendor: ${vendor?.name ?: "Unknown"}"
+                }
+
+                val onCategorySelected: suspend (Long?) -> Unit = { catId ->
+                    if (selectedTransactionId != null) {
+                        val trans = repo.getTransactionById(selectedTransactionId!!)
+                        if (trans != null) {
+                            repo.updateTransaction(trans.copy(categoryId = catId))
+                            reloadTransactions()
+                        }
+                    } else if (selectedVendorId != null) {
+                        repo.setVendorCategory(selectedVendorId!!, catId)
+                        reloadVendors()
+                        reloadTransactions()
+                    }
+                    selectedTransactionId = null
+                    selectedVendorId = null
+                }
+
+                val onCancel = {
+                    selectedTransactionId = null
+                    selectedVendorId = null
+                }
+
+                CategorySelectionModal(
+                    title = modalTitle,
+                    categories = categories,
+                    onCategorySelected = onCategorySelected,
+                    onCancel = onCancel
+                )
+            }
+
+            // Deletion confirmation modal
+            if (showDeleteConfirmation) {
+                DeleteConfirmationModal(
+                    transactionCount = selectedTransactionIds.size,
+                    onConfirm = {
+                        // Perform deletion
+                        val transactionsToDelete = filteredTransactions.filter { it.id in selectedTransactionIds }
+                        val batch = DeletedBatch(
+                            timestamp = System.currentTimeMillis(),
+                            transactions = transactionsToDelete
+                        )
+                        undoStack = undoStack + batch
+
+                        scope.launch {
+                            transactionsToDelete.forEach { transaction ->
+                                val transactionToDelete = Transaction(
+                                    id = transaction.id,
+                                    transactionDate = transaction.transactionDate,
+                                    amount = transaction.amount,
+                                    vendor = transaction.vendor,
+                                    account = transaction.account,
+                                    categoryId = transaction.categoryId
+                                )
+                                repo.deleteTransaction(transactionToDelete)
+                            }
+                            selectedTransactionIds = emptySet()
+                            lastClickedIndex = null
+                            selectionAnchorIndex = null
+                            reloadTransactions()
+                            reloadVendors()
+                            reloadCategories()
+                        }
+                        showDeleteConfirmation = false
+                    },
+                    onCancel = {
+                        showDeleteConfirmation = false
+                    }
+                )
+            }
+}
+
+@Composable
+fun DeleteConfirmationModal(
+    transactionCount: Int,
+    onConfirm: () -> Unit,
+    onCancel: () -> Unit
+) {
+    Box(
+        modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.5f)),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            modifier = Modifier.background(Color(0xFF1A1B26)).padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Text(
+                "Confirm Deletion"
+            )
+            Text(
+                "Delete $transactionCount selected transaction${if (transactionCount != 1) "s" else ""}? " +
+                "This action can be undone.",
+                textAlign = TextAlign.Center
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                AppButton(
+                    content = "Delete",
+                    onClick = onConfirm,
+                    type = AppButtonVariant.DANGER
+                )
+                AppButton(
+                    content = "Cancel",
+                    onClick = onCancel,
+                    type = AppButtonVariant.CONFIRM
+                )
             }
         }
     }

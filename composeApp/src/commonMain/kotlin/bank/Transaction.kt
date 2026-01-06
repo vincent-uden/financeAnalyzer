@@ -173,6 +173,9 @@ interface TransactionDao {
     @Update
     suspend fun update(value: Transaction)
 
+    @androidx.room.Delete
+    suspend fun delete(transaction: Transaction)
+
     @Query("SELECT count(*) FROM `Transaction`")
     suspend fun count(): Long
 

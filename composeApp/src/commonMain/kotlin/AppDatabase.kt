@@ -148,4 +148,6 @@ class BankRepository(
         }.time
         return transactionDao.getCategoryIncomeForMonth(startDate, endDate, accountIds)
     }
+
+    suspend fun deleteTransaction(transaction: Transaction) = transactionDao.delete(transaction)
 }

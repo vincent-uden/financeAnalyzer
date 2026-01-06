@@ -29,7 +29,8 @@ enum class AppButtonVariant {
 fun AppButton (
     content: String,
     onClick: () -> Unit,
-    type: AppButtonVariant = AppButtonVariant.CONFIRM
+    type: AppButtonVariant = AppButtonVariant.CONFIRM,
+    enabled: Boolean = true
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isHovered by interactionSource.collectIsHoveredAsState()
@@ -37,12 +38,23 @@ fun AppButton (
         AppButtonVariant.CONFIRM -> Theme[colors][green]
         AppButtonVariant.DANGER -> Theme[colors][red]
     }
-    val bgColor = if (isHovered) colorLerp(baseBgColor, Color.White, 0.3f) else baseBgColor
+    val disabledBgColor = Color(0xFF555555) // Gray for disabled state
+    val bgColor = if (!enabled) {
+        disabledBgColor
+    } else if (isHovered) {
+        colorLerp(baseBgColor, Color.White, 0.3f)
+    } else {
+        baseBgColor
+    }
+
     UnstyledButton(
-        modifier = Modifier.background(bgColor, RoundedCornerShape(8.dp)).padding(horizontal = 16.dp, vertical = 8.dp),
+        onClick = if (enabled) onClick else { {} },
         interactionSource = interactionSource,
-        onClick = onClick
+        modifier = Modifier.background(bgColor, RoundedCornerShape(8.dp)).padding(horizontal = 16.dp, vertical = 8.dp)
     ) {
-        Text(content, color = Theme[colors][text])
+        Text(
+            content,
+            color = if (enabled) Theme[colors][text] else Theme[colors][text].copy(alpha = 0.5f)
+        )
     }
 }
