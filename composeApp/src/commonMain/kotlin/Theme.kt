@@ -3,7 +3,7 @@ import com.composeunstyled.theme.ThemeProperty
 import com.composeunstyled.theme.ThemeToken
 
 val colors = ThemeProperty<Color>("colors")
-val foreground = ThemeToken<Color>("background")
+val foreground = ThemeToken<Color>("foreground")
 val background = ThemeToken<Color>("background")
 val backgroundLighter = ThemeToken<Color>("backgroundLighter")
 val text = ThemeToken<Color>("text")

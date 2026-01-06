@@ -31,6 +31,7 @@ import androidx.compose.ui.unit.dp
 import colors
 import AppDatabase
 import BankRepository
+import androidx.compose.foundation.text.input.TextFieldState
 import bank.Transaction
 import bank.TransactionWithCategory
 import com.composeunstyled.Text
@@ -38,6 +39,7 @@ import com.composeunstyled.TextField
 import com.composeunstyled.TextInput
 import com.composeunstyled.UnstyledButton
 import com.composeunstyled.theme.Theme
+import foreground
 import green
 import kotlinx.coroutines.launch
 import red
@@ -77,7 +79,10 @@ fun CategoriesView(db: AppDatabase) {
             Text("Categories", modifier = Modifier.padding(bottom = 8.dp))
             LazyColumn(modifier = Modifier.weight(1f)) {
                 itemsIndexed(categories) { _, category ->
-                    Row(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
                         Text(category.name, modifier = Modifier.weight(1f))
                         UnstyledButton(onClick = {
                             scope.launch {
@@ -91,26 +96,29 @@ fun CategoriesView(db: AppDatabase) {
                     }
                 }
             }
-            val newCategoryState = remember { androidx.compose.foundation.text.input.TextFieldState() }
-            Row(modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
+            val newCategoryState = remember { TextFieldState() }
+            Row(modifier = Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                 TextField(
                     state = newCategoryState,
-                    modifier = Modifier.weight(1f).background(Color(0xFF35374B)).border(1.dp, Color.White, RoundedCornerShape(4.dp))
+                    modifier = Modifier.weight(1f).background(Color(0xFF35374B))
+                        .border(1.dp, Color.White, RoundedCornerShape(4.dp))
                 ) {
-                    TextInput()
+                    TextInput(modifier = Modifier.padding(vertical = 8.dp, horizontal = 4.dp))
                 }
-                UnstyledButton(onClick = {
-                    val name = newCategoryState.text.toString().trim()
-                    if (name.isNotEmpty()) {
-                        scope.launch {
-                            repo.insertCategory(name)
-                            newCategoryState.edit { replace(0, length, "") }
-                            reloadCategories()
+                AppButton(
+                    content = "Add",
+                    onClick = {
+                        val name = newCategoryState.text.toString().trim()
+                        if (name.isNotEmpty()) {
+                            scope.launch {
+                                repo.insertCategory(name)
+                                newCategoryState.edit { replace(0, length, "") }
+                                reloadCategories()
+                            }
                         }
-                    }
-                }) {
-                    Text("Add")
-                }
+                    },
+                    type = AppButtonVariant.CONFIRM
+                )
             }
         }
 
@@ -118,10 +126,18 @@ fun CategoriesView(db: AppDatabase) {
         Box(modifier = Modifier.weight(3f).fillMaxHeight()) {
             Column(modifier = Modifier.fillMaxSize().padding(8.dp)) {
                 Text("Transactions", modifier = Modifier.padding(bottom = 8.dp))
-                Row(modifier = Modifier.fillMaxWidth().background(Color(0xFF35374B)).padding(8.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().background(Color(0xFF35374B)).padding(8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
                     Text("Date", modifier = Modifier.width(120.dp), color = Color.White)
                     Text("Vendor", modifier = Modifier.width(150.dp), color = Color.White)
-                    Text("Amount (SEK)", modifier = Modifier.width(100.dp), textAlign = TextAlign.Right, color = Color.White)
+                    Text(
+                        "Amount (SEK)",
+                        modifier = Modifier.width(100.dp),
+                        textAlign = TextAlign.Right,
+                        color = Color.White
+                    )
                     Text("Category", modifier = Modifier.width(100.dp), color = Color.White)
                     Text("Actions", modifier = Modifier.width(100.dp), color = Color.White)
                 }
@@ -130,7 +146,9 @@ fun CategoriesView(db: AppDatabase) {
                         val bgColor = if (index % 2 == 0) Color(0xFF1A1B26) else Color(0xFF35374B)
                         val amountColor = if (trans.amount > 0) Theme[colors][green] else Theme[colors][red]
                         Row(
-                            modifier = Modifier.fillMaxWidth().background(bgColor).padding(vertical = 4.dp, horizontal = 8.dp)
+                            modifier = Modifier.fillMaxWidth().background(bgColor)
+                                .padding(vertical = 4.dp, horizontal = 8.dp),
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
                             Text(
                                 formatter.format(
@@ -141,9 +159,21 @@ fun CategoriesView(db: AppDatabase) {
                                 ), modifier = Modifier.width(120.dp)
                             )
                             Text(trans.vendorName ?: "Unknown", modifier = Modifier.width(150.dp))
-                            Text(String.format("%.2f", trans.amount / 100.0), modifier = Modifier.width(100.dp), textAlign = TextAlign.Right, color = amountColor)
-                            Text(trans.categoryName ?: "None", modifier = Modifier.width(100.dp))
-                            UnstyledButton(onClick = { selectedTransactionId = trans.id }, modifier = Modifier.width(100.dp)) {
+                            Text(
+                                String.format("%.2f", trans.amount / 100.0),
+                                modifier = Modifier.width(100.dp),
+                                textAlign = TextAlign.Right,
+                                color = amountColor
+                            )
+                            Text(
+                                trans.categoryName ?: "None",
+                                modifier = Modifier.width(100.dp),
+                                color = if (trans.categoryName == null) Theme[colors][foreground].copy(alpha = 0.5f) else Theme[colors][foreground]
+                            )
+                            UnstyledButton(
+                                onClick = { selectedTransactionId = trans.id },
+                                modifier = Modifier.width(100.dp)
+                            ) {
                                 Text("Assign")
                             }
                         }
@@ -154,7 +184,7 @@ fun CategoriesView(db: AppDatabase) {
             // Overlay for category selection
             if (selectedTransactionId != null) {
                 Box(
-                    modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.5f)),
+                    modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.5f)).padding(8.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Column(
