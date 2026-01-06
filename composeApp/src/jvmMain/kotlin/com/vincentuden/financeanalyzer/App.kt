@@ -1,4 +1,4 @@
-package com.vincentuden.demo
+package com.vincentuden.financeanalyzer
 
 import AppDatabase
 import TodoEntity

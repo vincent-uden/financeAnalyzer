@@ -46,11 +46,11 @@ kotlin {
 
 compose.desktop {
     application {
-        mainClass = "com.vincentuden.demo.MainKt"
+        mainClass = "com.vincentuden.financeanalyzer.MainKt"
 
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
-            packageName = "com.vincentuden.demo"
+            packageName = "com.vincentuden.financeanalyzer"
             packageVersion = "1.0.0"
         }
 

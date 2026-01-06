@@ -43,12 +43,12 @@ This file contains instructions for agentic coding assistants working in this re
 
 ### Run Single Test Class
 ```bash
-./gradlew composeApp:jvmTest --tests "com.vincentuden.demo.ComposeAppDesktopTest"
+./gradlew composeApp:jvmTest --tests "com.vincentuden.financeanalyzer.ComposeAppDesktopTest"
 ```
 
 ### Run Single Test Method
 ```bash
-./gradlew composeApp:jvmTest --tests "com.vincentuden.demo.ComposeAppDesktopTest.example"
+./gradlew composeApp:jvmTest --tests "com.vincentuden.financeanalyzer.ComposeAppDesktopTest.example"
 ```
 
 ### Run Tests and Generate Reports
@@ -352,14 +352,14 @@ composeApp/
 │   │   │       └── Transaction.kt
 │   └── jvmMain/
 │       ├── kotlin/
-│       │   └── com/vincentuden/demo/   # Platform-specific code
+│       │   └── com/vincentuden/financeanalyzer/   # Platform-specific code
 │       │       ├── App.kt              # Main UI
 │       │       ├── main.kt             # Application entry point
 │       │       └── Platform.kt         # Platform utilities
 │       └── resources/                  # Resources
 └── src/jvmTest/
     └── kotlin/
-        └── com/vincentuden/demo/       # Tests
+        └── com/vincentuden/financeanalyzer/       # Tests
             └── ComposeAppDesktopTest.kt
 ```
 
@@ -461,8 +461,8 @@ sealed class UiState {
 ### Resource Management
 ```kotlin
 // Compose resources
-import demo.composeapp.generated.resources.Res
-import demo.composeapp.generated.resources.compose_multiplatform
+import financeanalyzer.composeapp.generated.resources.Res
+import financeanalyzer.composeapp.generated.resources.compose_multiplatform
 
 @Composable
 fun AppIcon() {

@@ -1,4 +1,4 @@
-package com.vincentuden.demo
+package com.vincentuden.financeanalyzer
 
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
@@ -9,7 +9,7 @@ import getRoomDatabase
 fun main() = application {
     Window(
         onCloseRequest = ::exitApplication,
-        title = "demo",
+        title = "financeAnalyzer",
         state = rememberWindowState(width = 1600.dp, height = 900.dp)
     ) {
         val databaseBuilder = getDatabaseBuilder()
