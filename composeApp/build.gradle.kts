@@ -53,6 +53,14 @@ compose.desktop {
             packageName = "com.vincentuden.demo"
             packageVersion = "1.0.0"
         }
+
+        buildTypes {
+            release {
+                proguard {
+                    isEnabled = false
+                }
+            }
+        }
     }
 }
 
