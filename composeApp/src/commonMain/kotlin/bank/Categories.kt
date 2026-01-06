@@ -72,6 +72,17 @@ data class DeletedBatch(
     val transactions: List<TransactionWithCategory>
 )
 
+// Global state holder for undo/redo persistence across tab switches
+object UndoRedoManager {
+    var undoStack: MutableList<DeletedBatch> = mutableListOf()
+    var redoStack: MutableList<DeletedBatch> = mutableListOf()
+
+    fun clear() {
+        undoStack.clear()
+        redoStack.clear()
+    }
+}
+
 @Composable
 fun CategoriesView(db: AppDatabase) {
     var categories by remember { mutableStateOf<List<Category>>(emptyList()) }
@@ -89,9 +100,7 @@ fun CategoriesView(db: AppDatabase) {
     var lastClickedIndex by remember { mutableStateOf<Int?>(null) }
     var selectionAnchorIndex by remember { mutableStateOf<Int?>(null) }
 
-    // Undo/redo state
-    var undoStack by remember { mutableStateOf<List<DeletedBatch>>(emptyList()) }
-    var redoStack by remember { mutableStateOf<List<DeletedBatch>>(emptyList()) }
+    // Undo/redo state (global for session persistence)
 
     // Dialog state
     var showDeleteConfirmation by remember { mutableStateOf(false) }
@@ -126,10 +135,10 @@ fun CategoriesView(db: AppDatabase) {
 
     // Undo/Redo functions
     val performUndo = {
-        if (undoStack.isNotEmpty()) {
-            val batch = undoStack.last()
-            undoStack = undoStack.dropLast(1)
-            redoStack = redoStack + batch
+        if (UndoRedoManager.undoStack.isNotEmpty()) {
+            val batch = UndoRedoManager.undoStack.last()
+            UndoRedoManager.undoStack.removeAt(UndoRedoManager.undoStack.size - 1)
+            UndoRedoManager.redoStack.add(batch)
 
             // Restore transactions to database
             scope.launch {
@@ -151,10 +160,10 @@ fun CategoriesView(db: AppDatabase) {
     }
 
     val performRedo = {
-        if (redoStack.isNotEmpty()) {
-            val batch = redoStack.last()
-            redoStack = redoStack.dropLast(1)
-            undoStack = undoStack + batch
+        if (UndoRedoManager.redoStack.isNotEmpty()) {
+            val batch = UndoRedoManager.redoStack.last()
+            UndoRedoManager.redoStack.removeAt(UndoRedoManager.redoStack.size - 1)
+            UndoRedoManager.undoStack.add(batch)
 
             // Delete transactions from database
             scope.launch {
@@ -349,13 +358,13 @@ fun CategoriesView(db: AppDatabase) {
                             content = "Undo",
                             onClick = { performUndo() },
                             type = AppButtonVariant.CONFIRM,
-                            enabled = undoStack.isNotEmpty()
+                            enabled = UndoRedoManager.undoStack.isNotEmpty()
                         )
                         AppButton(
                             content = "Redo",
                             onClick = { performRedo() },
                             type = AppButtonVariant.CONFIRM,
-                            enabled = redoStack.isNotEmpty()
+                            enabled = UndoRedoManager.redoStack.isNotEmpty()
                         )
                     }
 
@@ -561,7 +570,7 @@ fun CategoriesView(db: AppDatabase) {
                             timestamp = System.currentTimeMillis(),
                             transactions = transactionsToDelete
                         )
-                        undoStack = undoStack + batch
+                        UndoRedoManager.undoStack.add(batch)
 
                         scope.launch {
                             transactionsToDelete.forEach { transaction ->
