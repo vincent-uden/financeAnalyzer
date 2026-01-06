@@ -1,28 +1,60 @@
-This is a Kotlin Multiplatform project targeting Desktop (JVM).
+# financeAnalyzer
 
-* [/composeApp](./composeApp/src) is for code that will be shared across your Compose Multiplatform applications.
-  It contains several subfolders:
-    - [commonMain](./composeApp/src/commonMain/kotlin) is for code that’s common for all targets.
-    - Other folders are for Kotlin code that will be compiled for only the platform indicated in the folder name.
-      For example, if you want to use Apple’s CoreCrypto for the iOS part of your Kotlin app,
-      the [iosMain](./composeApp/src/iosMain/kotlin) folder would be the right place for such calls.
-      Similarly, if you want to edit the Desktop (JVM) specific part, the [jvmMain](./composeApp/src/jvmMain/kotlin)
-      folder is the appropriate location.
+A desktop application for personal finance management. Import your bank statements, categorize transactions, and get insights into your spending and income patterns.
 
-### Build and Run Desktop (JVM) Application
+## Features
 
-To build and run the development version of the desktop app, use the run configuration from the run widget
-in your IDE’s toolbar or run it directly from the terminal:
+- **Import Bank Statements**: Easily import transactions from Handelsbanken Excel files (.xlsx)
+- **Transaction Categorization**: Organize expenses and income into custom categories
+- **Vendor Management**: Set default categories for recurring merchants
+- **Interactive Dashboard**: View monthly breakdowns with visual charts
+- **Account Tracking**: Monitor balances across multiple accounts
+- **Undo/Redo**: Full support for reverting changes
 
-- on macOS/Linux
-  ```shell
-  ./gradlew :composeApp:run
-  ```
-- on Windows
-  ```shell
-  .\gradlew.bat :composeApp:run
-  ```
+## Getting Started
+
+### Requirements
+- Windows, macOS, or Linux
+- Java 11 or higher
+
+### Installation
+1. Download the latest release from the releases page
+2. Run the executable file for your platform
+3. The app will start with an empty database
+
+### First Use
+1. Click the "XLSX" tab to import your first bank statement
+2. Select your Handelsbanken Excel file
+3. Review and confirm the imported transactions
+4. Use the "Categories" tab to organize your transactions
+5. Switch to the main dashboard to view your financial overview
 
 ---
 
-Learn more about [Kotlin Multiplatform](https://www.jetbrains.com/help/kotlin-multiplatform-dev/get-started.html)…
+## For Developers
+
+### Technology Stack
+- Kotlin Multiplatform 2.3.0
+- Compose Multiplatform 1.9.3
+- Room database 2.8.4
+- Apache POI 5.2.5 (Excel parsing)
+
+### Building from Source
+There are some pre-configured gradle actions that can be used from IntelliJ. If running from the terminal some sample commands are listed below.
+```bash
+# Clone the repository
+git clone https://github.com/vincent-uden/financeAnalyzer
+cd financeAnalyzer
+
+# Build the application
+./gradlew build
+
+# Run in development mode
+./gradlew composeApp:run
+
+# Run tests
+./gradlew composeApp:jvmTest
+```
+
+### Architecture
+The app uses a multiplatform structure with shared database and business logic in case more platforms than Desktop would ever be supported. The UI is built with Compose Unstyled components, focusing on custom design over Material UI.
