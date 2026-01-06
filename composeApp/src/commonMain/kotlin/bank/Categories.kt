@@ -2,6 +2,7 @@ package bank
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
@@ -33,6 +34,17 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.PointerKeyboardModifiers
+import androidx.compose.ui.input.pointer.PointerInputScope
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.type
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import colors
@@ -63,6 +75,7 @@ fun CategoriesView(db: AppDatabase) {
     var selectedVendorId by remember { mutableStateOf<Long?>(null) }
     var selectedCategoryIds by remember { mutableStateOf<Set<Long?>>(emptySet()) }
     var selectedVendorIds by remember { mutableStateOf<Set<Long>>(emptySet()) }
+    var isShiftPressed by remember { mutableStateOf(false) }
     val vendorCategoryMap = remember(vendors) { vendors.associate { it.id to it.categoryId } }
     val scope = rememberCoroutineScope()
     val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
@@ -103,7 +116,24 @@ fun CategoriesView(db: AppDatabase) {
         }
     }
 
-    Row(modifier = Modifier.safeContentPadding().fillMaxSize()) {
+    Row(modifier = Modifier.safeContentPadding().fillMaxSize().onKeyEvent { keyEvent ->
+        when (keyEvent.key) {
+            Key.ShiftLeft, Key.ShiftRight -> {
+                when (keyEvent.type) {
+                    KeyEventType.KeyDown -> {
+                        isShiftPressed = true
+                        true
+                    }
+                    KeyEventType.KeyUp -> {
+                        isShiftPressed = false
+                        true
+                    }
+                    else -> false
+                }
+            }
+            else -> false
+        }
+    }) {
                 // Sidebar for categories
                 Column(modifier = Modifier.width(200.dp).fillMaxHeight().padding(8.dp)) {
             Text("Categories", modifier = Modifier.padding(bottom = 8.dp))
@@ -111,15 +141,21 @@ fun CategoriesView(db: AppDatabase) {
                 // "None" category (uncategorized)
                 item {
                     val isSelected = null in selectedCategoryIds
-                    UnstyledButton(
-                        onClick = {
-                            selectedCategoryIds = if (null in selectedCategoryIds) {
-                                selectedCategoryIds - null
-                            } else {
-                                selectedCategoryIds + null
-                            }
-                        },
+                    Box(
                         modifier = Modifier.fillMaxWidth().background(if (isSelected) Color(0xFF2A2D3A) else Color.Transparent)
+                            .clickable {
+                                if (isShiftPressed) {
+                                    // Toggle this category
+                                    selectedCategoryIds = if (null in selectedCategoryIds) {
+                                        selectedCategoryIds - null
+                                    } else {
+                                        selectedCategoryIds + null
+                                    }
+                                } else {
+                                    // Replace selection with just this category
+                                    selectedCategoryIds = setOf(null)
+                                }
+                            }
                     ) {
                         Text("None", color = Theme[colors][foreground].copy(alpha = 0.5f), modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp))
                     }
@@ -131,17 +167,22 @@ fun CategoriesView(db: AppDatabase) {
                         modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).background(if (isSelected) Color(0xFF2A2D3A) else Color.Transparent),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        UnstyledButton(
-                            onClick = {
-                                selectedCategoryIds = if (category.id in selectedCategoryIds) {
-                                    selectedCategoryIds - category.id
+                        Box(
+                            modifier = Modifier.weight(1f).clickable {
+                                if (isShiftPressed) {
+                                    // Toggle this category
+                                    selectedCategoryIds = if (category.id in selectedCategoryIds) {
+                                        selectedCategoryIds - category.id
+                                    } else {
+                                        selectedCategoryIds + category.id
+                                    }
                                 } else {
-                                    selectedCategoryIds + category.id
+                                    // Replace selection with just this category
+                                    selectedCategoryIds = setOf(category.id)
                                 }
-                            },
-                            modifier = Modifier.weight(1f)
+                            }
                         ) {
-                            Text(category.name)
+                            Text(category.name, modifier = Modifier.fillMaxWidth())
                         }
                         UnstyledButton(onClick = {
                             scope.launch {
@@ -195,7 +236,6 @@ fun CategoriesView(db: AppDatabase) {
                         type = AppButtonVariant.CONFIRM
                     )
                 }
-                Text("DEBUG: Transactions count: ${filteredTransactions.size}", modifier = Modifier.padding(bottom = 8.dp))
                 Text("Transactions", modifier = Modifier.padding(bottom = 8.dp))
                 Row(
                     modifier = Modifier.fillMaxWidth().background(Color(0xFF35374B)).padding(8.dp),
@@ -303,17 +343,22 @@ fun CategoriesView(db: AppDatabase) {
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        UnstyledButton(
-                            onClick = {
-                                selectedVendorIds = if (vendor.id in selectedVendorIds) {
-                                    selectedVendorIds - vendor.id
+                        Box(
+                            modifier = Modifier.weight(1f).clickable {
+                                if (isShiftPressed) {
+                                    // Toggle this vendor
+                                    selectedVendorIds = if (vendor.id in selectedVendorIds) {
+                                        selectedVendorIds - vendor.id
+                                    } else {
+                                        selectedVendorIds + vendor.id
+                                    }
                                 } else {
-                                    selectedVendorIds + vendor.id
+                                    // Replace selection with just this vendor
+                                    selectedVendorIds = setOf(vendor.id)
                                 }
-                            },
-                            modifier = Modifier.weight(1f)
+                            }
                         ) {
-                            Text(vendor.name)
+                            Text(vendor.name, modifier = Modifier.fillMaxWidth())
                         }
                         Text(
                             vendor.categoryName ?: "None",
