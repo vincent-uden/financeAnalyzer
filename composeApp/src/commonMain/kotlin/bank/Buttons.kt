@@ -3,6 +3,7 @@ package bank
 import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
@@ -50,11 +51,13 @@ fun AppButton (
     UnstyledButton(
         onClick = if (enabled) onClick else { {} },
         interactionSource = interactionSource,
-        modifier = Modifier.background(bgColor, RoundedCornerShape(8.dp)).padding(horizontal = 16.dp, vertical = 8.dp)
+        modifier = Modifier.background(bgColor, RoundedCornerShape(8.dp))
     ) {
-        Text(
-            content,
-            color = if (enabled) Theme[colors][text] else Theme[colors][text].copy(alpha = 0.5f)
-        )
+        Box(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+            Text(
+                content,
+                color = if (enabled) Theme[colors][text] else Theme[colors][text].copy(alpha = 0.5f)
+            )
+        }
     }
 }
