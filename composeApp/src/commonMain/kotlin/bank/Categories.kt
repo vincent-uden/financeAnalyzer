@@ -192,97 +192,42 @@ fun CategoriesView(db: AppDatabase) {
                 }
             }
 
-            // Overlay for category selection
-            if (selectedTransactionId != null) {
-                Box(
-                    modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.5f)).padding(8.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(
-                        modifier = Modifier.background(Color(0xFF1A1B26)).padding(16.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Text("Select Category for Transaction", modifier = Modifier.padding(bottom = 8.dp))
-                        LazyColumn(modifier = Modifier.height(200.dp)) {
-                            item {
-                                UnstyledButton(onClick = {
-                                    scope.launch {
-                                        val trans = repo.getTransactionById(selectedTransactionId!!)
-                                        if (trans != null) {
-                                            repo.updateTransaction(trans.copy(categoryId = null))
-                                            reloadTransactions()
-                                        }
-                                        selectedTransactionId = null
-                                    }
-                                }) {
-                                    Text("None", modifier = Modifier.fillMaxWidth().padding(8.dp))
-                                }
-                            }
-                            itemsIndexed(categories) { _, category ->
-                                UnstyledButton(onClick = {
-                                    scope.launch {
-                                        val trans = repo.getTransactionById(selectedTransactionId!!)
-                                        if (trans != null) {
-                                            repo.updateTransaction(trans.copy(categoryId = category.id))
-                                            reloadTransactions()
-                                        }
-                                        selectedTransactionId = null
-                                    }
-                                }) {
-                                    Text(category.name, modifier = Modifier.fillMaxWidth().padding(8.dp))
-                                }
-                            }
-                        }
-                        UnstyledButton(onClick = { selectedTransactionId = null }) {
-                            Text("Cancel", color = Theme[colors][red])
-                        }
-                    }
+            // Unified category selection overlay
+            if (selectedTransactionId != null || selectedVendorId != null) {
+                val modalTitle = if (selectedTransactionId != null) {
+                    "Select Category for Transaction"
+                } else {
+                    val vendor = vendors.find { it.id == selectedVendorId }
+                    "Select Category for Vendor: ${vendor?.name ?: "Unknown"}"
                 }
-            }
 
-            // Overlay for vendor category selection
-            if (selectedVendorId != null) {
-                Box(
-                    modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.5f)).padding(8.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(
-                        modifier = Modifier.background(Color(0xFF1A1B26)).padding(16.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        val vendor = vendors.find { it.id == selectedVendorId }
-                        Text("Select Category for Vendor: ${vendor?.name ?: "Unknown"}", modifier = Modifier.padding(bottom = 8.dp))
-                        LazyColumn(modifier = Modifier.height(200.dp)) {
-                            item {
-                                UnstyledButton(onClick = {
-                                    scope.launch {
-                                        repo.setVendorCategory(selectedVendorId!!, null)
-                                        reloadVendors()
-                                        reloadTransactions()
-                                        selectedVendorId = null
-                                    }
-                                }) {
-                                    Text("None", modifier = Modifier.fillMaxWidth().padding(8.dp))
-                                }
-                            }
-                            itemsIndexed(categories) { _, category ->
-                                UnstyledButton(onClick = {
-                                    scope.launch {
-                                        repo.setVendorCategory(selectedVendorId!!, category.id)
-                                        reloadVendors()
-                                        reloadTransactions()
-                                        selectedVendorId = null
-                                    }
-                                }) {
-                                    Text(category.name, modifier = Modifier.fillMaxWidth().padding(8.dp))
-                                }
-                            }
+                val onCategorySelected: suspend (Long?) -> Unit = { catId ->
+                    if (selectedTransactionId != null) {
+                        val trans = repo.getTransactionById(selectedTransactionId!!)
+                        if (trans != null) {
+                            repo.updateTransaction(trans.copy(categoryId = catId))
+                            reloadTransactions()
                         }
-                        UnstyledButton(onClick = { selectedVendorId = null }) {
-                            Text("Cancel", color = Theme[colors][red])
-                        }
+                    } else if (selectedVendorId != null) {
+                        repo.setVendorCategory(selectedVendorId!!, catId)
+                        reloadVendors()
+                        reloadTransactions()
                     }
+                    selectedTransactionId = null
+                    selectedVendorId = null
                 }
+
+                val onCancel = {
+                    selectedTransactionId = null
+                    selectedVendorId = null
+                }
+
+                CategorySelectionModal(
+                    title = modalTitle,
+                    categories = categories,
+                    onCategorySelected = onCategorySelected,
+                    onCancel = onCancel
+                )
             }
         }
 
@@ -309,6 +254,42 @@ fun CategoriesView(db: AppDatabase) {
                         }
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+fun CategorySelectionModal(
+    title: String,
+    categories: List<Category>,
+    onCategorySelected: suspend (Long?) -> Unit,
+    onCancel: () -> Unit
+) {
+    val scope = rememberCoroutineScope()
+    Box(
+        modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.5f)).padding(8.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            modifier = Modifier.background(Color(0xFF1A1B26)).padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(title, modifier = Modifier.padding(bottom = 8.dp))
+            LazyColumn(modifier = Modifier.height(200.dp)) {
+                item {
+                    UnstyledButton(onClick = { scope.launch { onCategorySelected(null) } }) {
+                        Text("None", modifier = Modifier.fillMaxWidth().padding(8.dp))
+                    }
+                }
+                itemsIndexed(categories) { _, category ->
+                    UnstyledButton(onClick = { scope.launch { onCategorySelected(category.id) } }) {
+                        Text(category.name, modifier = Modifier.fillMaxWidth().padding(8.dp))
+                    }
+                }
+            }
+            UnstyledButton(onClick = onCancel) {
+                Text("Cancel", color = Theme[colors][red])
             }
         }
     }
