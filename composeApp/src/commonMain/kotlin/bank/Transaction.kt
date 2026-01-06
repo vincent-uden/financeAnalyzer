@@ -154,6 +154,17 @@ data class TransactionWithCategory(
     val accountName: String?,
 )
 
+data class AccountBalance(
+    val accountId: Long,
+    val accountName: String,
+    val balance: Long,
+)
+
+data class CategorySpending(
+    val categoryName: String,
+    val total: Long,
+)
+
 @Dao
 interface TransactionDao {
     @Insert
@@ -170,6 +181,15 @@ interface TransactionDao {
 
     @Query("SELECT t.*, c.name as categoryName, v.name as vendorName, a.name as accountName FROM `Transaction` t LEFT JOIN Category c ON t.categoryId = c.id LEFT JOIN Vendor v ON t.vendor = v.id LEFT JOIN Account a ON t.account = a.id ORDER BY t.transactionDate DESC")
     suspend fun getAllWithCategories(): List<TransactionWithCategory>
+
+    @Query("SELECT a.id as accountId, a.name as accountName, COALESCE(SUM(t.amount), 0) as balance FROM Account a LEFT JOIN `Transaction` t ON a.id = t.account GROUP BY a.id, a.name")
+    suspend fun getAccountBalances(): List<AccountBalance>
+
+    @Query("SELECT COALESCE(c.name, 'Uncategorized') as categoryName, SUM(-t.amount) as total FROM `Transaction` t LEFT JOIN Category c ON t.categoryId = c.id WHERE t.transactionDate >= :startDate AND t.transactionDate < :endDate AND t.amount < 0 AND t.account IN (:accountIds) GROUP BY t.categoryId ORDER BY total DESC")
+    suspend fun getCategorySpendingForMonth(startDate: Date, endDate: Date, accountIds: List<Long>): List<CategorySpending>
+
+    @Query("SELECT COALESCE(c.name, 'Uncategorized') as categoryName, SUM(t.amount) as total FROM `Transaction` t LEFT JOIN Category c ON t.categoryId = c.id WHERE t.transactionDate >= :startDate AND t.transactionDate < :endDate AND t.amount > 0 AND t.account IN (:accountIds) GROUP BY t.categoryId ORDER BY total DESC")
+    suspend fun getCategoryIncomeForMonth(startDate: Date, endDate: Date, accountIds: List<Long>): List<CategorySpending>
 }
 
 class Converters {

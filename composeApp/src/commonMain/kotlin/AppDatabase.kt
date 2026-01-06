@@ -14,6 +14,8 @@ import bank.Converters
 import bank.TransactionWithCategory
 import bank.Transaction
 import bank.TransactionDao
+import bank.AccountBalance
+import bank.CategorySpending
 import bank.Vendor
 import bank.VendorDao
 import bank.VendorWithCategory
@@ -117,5 +119,33 @@ class BankRepository(
         val categoryId = transaction.categoryId ?: vendor?.categoryId
         val transactionToInsert = transaction.copy(categoryId = categoryId)
         return transactionDao.insert(transactionToInsert)
+    }
+
+    suspend fun getAccountBalances(): List<AccountBalance> = transactionDao.getAccountBalances()
+
+    suspend fun getCategorySpendingForMonth(year: Int, month: Int, accountIds: List<Long>): List<CategorySpending> {
+        val startDate = java.util.Calendar.getInstance().apply {
+            set(year, month - 1, 1, 0, 0, 0)
+            set(java.util.Calendar.MILLISECOND, 0)
+        }.time
+        val endDate = java.util.Calendar.getInstance().apply {
+            set(year, month - 1, 1, 0, 0, 0)
+            set(java.util.Calendar.MILLISECOND, 0)
+            add(java.util.Calendar.MONTH, 1)
+        }.time
+        return transactionDao.getCategorySpendingForMonth(startDate, endDate, accountIds)
+    }
+
+    suspend fun getCategoryIncomeForMonth(year: Int, month: Int, accountIds: List<Long>): List<CategorySpending> {
+        val startDate = java.util.Calendar.getInstance().apply {
+            set(year, month - 1, 1, 0, 0, 0)
+            set(java.util.Calendar.MILLISECOND, 0)
+        }.time
+        val endDate = java.util.Calendar.getInstance().apply {
+            set(year, month - 1, 1, 0, 0, 0)
+            set(java.util.Calendar.MILLISECOND, 0)
+            add(java.util.Calendar.MONTH, 1)
+        }.time
+        return transactionDao.getCategoryIncomeForMonth(startDate, endDate, accountIds)
     }
 }

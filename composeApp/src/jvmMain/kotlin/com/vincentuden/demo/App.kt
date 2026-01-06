@@ -2,17 +2,27 @@ package com.vincentuden.demo
 
 import AppDatabase
 import TodoEntity
+import BankRepository
+import bank.AccountBalance
+import bank.CategorySpending
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeContentPadding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -69,6 +79,9 @@ import white
 import yellow
 import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
+import java.time.YearMonth
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 
 
@@ -87,6 +100,30 @@ fun TabText(text: String, isSelected: Boolean, thickness: Dp = 4.dp) {
             )
         }
     }, text = text)
+}
+
+@Composable
+fun DashboardPanel(
+    title: String,
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit
+) {
+    val backgroundColor = Theme[colors][backgroundLighter]
+    val borderColor = Theme[colors][foreground].copy(alpha = 0.2f)
+
+    Column(
+        modifier = modifier
+            .background(backgroundColor, RoundedCornerShape(8.dp))
+            .border(1.dp, borderColor, RoundedCornerShape(8.dp))
+            .padding(16.dp)
+    ) {
+        Text(
+            text = title,
+            fontSize = 18.sp,
+            modifier = Modifier.padding(bottom = 12.dp)
+        )
+        content()
+    }
 }
 
 val AppTheme = buildPlatformTheme {
@@ -167,61 +204,236 @@ fun todaysDate(): String {
 
 @Composable
 fun frontPage(db: AppDatabase) {
-    var showContent by remember { mutableStateOf(false) }
-    val todoTitle = remember { TextFieldState() }
-    val todoContents = remember { TextFieldState() }
-
     val scope = rememberCoroutineScope()
-    var todos by remember { mutableIntStateOf(0) }
+    val repo = remember { BankRepository(db) }
 
-    LaunchedEffect(true) {
-        todos = db.todoDao().count()
+    // State for account selection
+    var availableAccounts by remember { mutableStateOf<List<AccountBalance>>(emptyList()) }
+    var selectedAccountIds by remember { mutableStateOf<Set<Long>>(emptySet()) }
+
+    // State for current month
+    var currentMonth by remember { mutableStateOf(YearMonth.now()) }
+
+    // State for data
+    var accountBalances by remember { mutableStateOf<List<AccountBalance>>(emptyList()) }
+    var monthlyCosts by remember { mutableStateOf<List<CategorySpending>>(emptyList()) }
+    var monthlyIncome by remember { mutableStateOf<List<CategorySpending>>(emptyList()) }
+
+    // Load available accounts on first load
+    LaunchedEffect(Unit) {
+        availableAccounts = repo.getAccountBalances()
+        selectedAccountIds = availableAccounts.map { it.accountId }.toSet()
     }
+
+    // Load data when accounts or month change
+    LaunchedEffect(selectedAccountIds, currentMonth) {
+        accountBalances = repo.getAccountBalances().filter { it.accountId in selectedAccountIds }
+        monthlyCosts = repo.getCategorySpendingForMonth(
+            currentMonth.year,
+            currentMonth.monthValue,
+            selectedAccountIds.toList()
+        )
+        monthlyIncome = repo.getCategoryIncomeForMonth(
+            currentMonth.year,
+            currentMonth.monthValue,
+            selectedAccountIds.toList()
+        )
+    }
+
     Column(
         modifier = Modifier
             .safeContentPadding()
-            .fillMaxSize(),
-        horizontalAlignment = Alignment.CenterHorizontally,
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState()),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Text(
-            text = "Today's date is ${todaysDate()}",
-            modifier = Modifier.padding(20.dp),
-            fontSize = 24.sp,
-            textAlign = TextAlign.Center
-        )
-        Text(
-            text = "There are $todos TODOs saved",
-            modifier = Modifier.padding(20.dp),
-            fontSize = 24.sp,
-            textAlign = TextAlign.Center
-        )
-        UnstyledButton(onClick = { showContent = !showContent }) {
-            Text("Click me!")
-        }
-        AnimatedVisibility(showContent) {
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                TextField(state = todoTitle) {
-                    TextInput()
-                }
-                TextField(state = todoContents) {
-                    TextInput()
-                }
-                UnstyledButton(onClick = {
-                    scope.launch {
-                        db.todoDao()
-                            .insert(TodoEntity(title = todoTitle.toString(), content = todoContents.toString()))
-                        todos = db.todoDao().count()
+        // Account Selection
+        DashboardPanel(
+            title = "Account Selection",
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            if (availableAccounts.isEmpty()) {
+                Text("No accounts found. Import some transactions first.")
+            } else {
+                Row(
+                    modifier = Modifier.horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    availableAccounts.forEach { account ->
+                        val isSelected = account.accountId in selectedAccountIds
+                        UnstyledButton(
+                            onClick = {
+                                selectedAccountIds = if (isSelected) {
+                                    selectedAccountIds - account.accountId
+                                } else {
+                                    selectedAccountIds + account.accountId
+                                }
+                            },
+                            modifier = Modifier
+                                .background(
+                                    if (isSelected) Theme[colors][cyan].copy(alpha = 0.2f)
+                                    else Theme[colors][background],
+                                    RoundedCornerShape(4.dp)
+                                )
+                                .border(
+                                    1.dp,
+                                    if (isSelected) Theme[colors][cyan] else Theme[colors][foreground].copy(alpha = 0.3f),
+                                    RoundedCornerShape(4.dp)
+                                )
+                                .padding(horizontal = 12.dp, vertical = 8.dp)
+                        ) {
+                            Text(account.accountName)
+                        }
                     }
-                }) {
-                    Text("Click me!")
                 }
             }
         }
-        UnstyledButton(onClick = { print(HandelsbankenStatement.fromXlsx("/home/vincent/Downloads/Handelsbanken_Account_Transactions_2026-01-05.xlsx")) }) {
-            Text("Import XLSX")
+
+        // Account Balances
+        DashboardPanel(
+            title = "Account Balances",
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            if (accountBalances.isEmpty()) {
+                Text("No accounts selected or no data available.")
+            } else {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    accountBalances.forEach { balance ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(balance.accountName)
+                            Text(
+                                text = formatAmount(balance.balance),
+                                color = if (balance.balance >= 0) Theme[colors][green] else Theme[colors][red]
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        // Month Navigation
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            UnstyledButton(
+                onClick = {
+                    currentMonth = currentMonth.minusMonths(1)
+                },
+                modifier = Modifier.padding(horizontal = 8.dp)
+            ) {
+                Text("Previous", color = Theme[colors][cyan])
+            }
+            Text(
+                text = DateTimeFormatter.ofPattern("MMMM yyyy", Locale.getDefault()).format(currentMonth),
+                fontSize = 20.sp,
+                modifier = Modifier.padding(horizontal = 16.dp)
+            )
+            UnstyledButton(
+                onClick = {
+                    currentMonth = currentMonth.plusMonths(1)
+                },
+                modifier = Modifier.padding(horizontal = 8.dp)
+            ) {
+                Text("Next", color = Theme[colors][cyan])
+            }
+        }
+
+        // Monthly Breakdowns
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            // Monthly Costs
+            DashboardPanel(
+                title = "Monthly Costs",
+                modifier = Modifier.weight(1f)
+            ) {
+                if (monthlyCosts.isEmpty()) {
+                    Text("No expenses for this month.")
+                } else {
+                    val maxAmount = monthlyCosts.maxOfOrNull { it.total } ?: 1L
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        monthlyCosts.forEach { spending ->
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(spending.categoryName, modifier = Modifier.weight(1f))
+                                Text(formatAmount(spending.total), color = Theme[colors][red])
+                            }
+                            // Simple bar chart
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(4.dp)
+                                    .background(
+                                        Theme[colors][background],
+                                        RoundedCornerShape(2.dp)
+                                    )
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxHeight()
+                                        .fillMaxWidth((spending.total.toFloat() / maxAmount.toFloat()).coerceIn(0f, 1f))
+                                        .background(Theme[colors][red], RoundedCornerShape(2.dp))
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Monthly Income
+            DashboardPanel(
+                title = "Monthly Income",
+                modifier = Modifier.weight(1f)
+            ) {
+                if (monthlyIncome.isEmpty()) {
+                    Text("No income for this month.")
+                } else {
+                    val maxAmount = monthlyIncome.maxOfOrNull { it.total } ?: 1L
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        monthlyIncome.forEach { income ->
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(income.categoryName, modifier = Modifier.weight(1f))
+                                Text(formatAmount(income.total), color = Theme[colors][green])
+                            }
+                            // Simple bar chart
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(4.dp)
+                                    .background(
+                                        Theme[colors][background],
+                                        RoundedCornerShape(2.dp)
+                                    )
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxHeight()
+                                        .fillMaxWidth((income.total.toFloat() / maxAmount.toFloat()).coerceIn(0f, 1f))
+                                        .background(Theme[colors][green], RoundedCornerShape(2.dp))
+                                )
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
+}
+
+private fun formatAmount(amount: Long): String {
+    val sek = amount / 100.0
+    return String.format("%.2f SEK", sek)
 }
