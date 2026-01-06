@@ -1,6 +1,5 @@
 package bank
 
-import AppDatabase
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -15,7 +14,6 @@ import androidx.compose.foundation.layout.safeContentPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -29,8 +27,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import colors
-import background
-import backgroundLighter
+import AppDatabase
+import BankRepository
+import bank.Transaction
+import bank.TransactionWithCategory
 import com.composeunstyled.Text
 import com.composeunstyled.TextField
 import com.composeunstyled.TextInput
@@ -50,21 +50,22 @@ fun CategoriesView(db: AppDatabase) {
     var selectedTransactionId by remember { mutableStateOf<Long?>(null) }
     val scope = rememberCoroutineScope()
     val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
+    val repo = BankRepository(db)
 
     LaunchedEffect(Unit) {
-        categories = db.categoryDao().getAll()
-        transactions = db.transactionDao().getAllWithCategories()
+        categories = repo.getCategories()
+        transactions = repo.getTransactionsWithCategories()
     }
 
     val reloadCategories = {
         scope.launch {
-            categories = db.categoryDao().getAll()
+            categories = repo.getCategories()
         }
     }
 
     val reloadTransactions = {
         scope.launch {
-            transactions = db.transactionDao().getAllWithCategories()
+            transactions = repo.getTransactionsWithCategories()
         }
     }
 
@@ -78,7 +79,7 @@ fun CategoriesView(db: AppDatabase) {
                         Text(category.name, modifier = Modifier.weight(1f))
                         UnstyledButton(onClick = {
                             scope.launch {
-                                db.categoryDao().delete(category)
+                                repo.deleteCategory(category)
                                 reloadCategories()
                                 reloadTransactions()
                             }
@@ -100,7 +101,7 @@ fun CategoriesView(db: AppDatabase) {
                     val name = newCategoryName.trim()
                     if (name.isNotEmpty()) {
                         scope.launch {
-                            db.categoryDao().insert(Category(name = name))
+                            repo.insertCategory(name)
                             newCategoryName = ""
                             reloadCategories()
                         }
@@ -116,13 +117,13 @@ fun CategoriesView(db: AppDatabase) {
             Column(modifier = Modifier.fillMaxSize().padding(8.dp)) {
                 Text("Transactions", modifier = Modifier.padding(bottom = 8.dp))
                 Row(modifier = Modifier.fillMaxWidth().background(Color(0xFF35374B)).padding(8.dp)) {
-                    Text("Date", modifier = Modifier.weight(2f), color = Color.White)
-                    Text("Vendor", modifier = Modifier.weight(2f), color = Color.White)
-                    Text("Amount (SEK)", modifier = Modifier.weight(1f), color = Color.White)
-                    Text("Category", modifier = Modifier.weight(1f), color = Color.White)
-                    Text("Actions", modifier = Modifier.weight(1f), color = Color.White)
+                    Text("Date", modifier = Modifier.width(120.dp), color = Color.White)
+                    Text("Vendor", modifier = Modifier.width(150.dp), color = Color.White)
+                    Text("Amount (SEK)", modifier = Modifier.width(100.dp), textAlign = TextAlign.Right, color = Color.White)
+                    Text("Category", modifier = Modifier.width(100.dp), color = Color.White)
+                    Text("Actions", modifier = Modifier.width(100.dp), color = Color.White)
                 }
-                LazyColumn(modifier = Modifier.weight(1f), state = rememberLazyListState()) {
+                LazyColumn(modifier = Modifier.weight(1f)) {
                     itemsIndexed(transactions) { index, trans ->
                         val bgColor = if (index % 2 == 0) Color(0xFF1A1B26) else Color(0xFF35374B)
                         val amountColor = if (trans.amount > 0) Theme[colors][green] else Theme[colors][red]
@@ -135,13 +136,13 @@ fun CategoriesView(db: AppDatabase) {
                                         trans.transactionDate.toInstant(),
                                         ZoneId.systemDefault()
                                     )
-                                ), modifier = Modifier.weight(2f)
+                                ), modifier = Modifier.width(120.dp)
                             )
-                            Text(trans.vendorName ?: "Unknown", modifier = Modifier.weight(2f))
-                            Text(String.format("%.2f", trans.amount / 100.0), modifier = Modifier.weight(1f), textAlign = TextAlign.Right, color = amountColor)
-                            Text(trans.categoryName ?: "None", modifier = Modifier.weight(1f))
-                            UnstyledButton(onClick = { selectedTransactionId = trans.id }) {
-                                Text("Assign", modifier = Modifier.weight(1f))
+                            Text(trans.vendorName ?: "Unknown", modifier = Modifier.width(150.dp))
+                            Text(String.format("%.2f", trans.amount / 100.0), modifier = Modifier.width(100.dp), textAlign = TextAlign.Right, color = amountColor)
+                            Text(trans.categoryName ?: "None", modifier = Modifier.width(100.dp))
+                            UnstyledButton(onClick = { selectedTransactionId = trans.id }, modifier = Modifier.width(100.dp)) {
+                                Text("Assign")
                             }
                         }
                     }
@@ -163,9 +164,9 @@ fun CategoriesView(db: AppDatabase) {
                             item {
                                 UnstyledButton(onClick = {
                                     scope.launch {
-                                        val trans = db.transactionDao().getById(selectedTransactionId!!)
+                                        val trans = repo.getTransactionById(selectedTransactionId!!)
                                         if (trans != null) {
-                                            db.transactionDao().update(trans.copy(categoryId = null))
+                                            repo.updateTransaction(trans.copy(categoryId = null))
                                             reloadTransactions()
                                         }
                                         selectedTransactionId = null
@@ -177,9 +178,9 @@ fun CategoriesView(db: AppDatabase) {
                             itemsIndexed(categories) { _, category ->
                                 UnstyledButton(onClick = {
                                     scope.launch {
-                                        val trans = db.transactionDao().getById(selectedTransactionId!!)
+                                        val trans = repo.getTransactionById(selectedTransactionId!!)
                                         if (trans != null) {
-                                            db.transactionDao().update(trans.copy(categoryId = category.id))
+                                            repo.updateTransaction(trans.copy(categoryId = category.id))
                                             reloadTransactions()
                                         }
                                         selectedTransactionId = null

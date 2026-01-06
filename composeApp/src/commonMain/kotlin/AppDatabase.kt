@@ -11,6 +11,7 @@ import bank.BankStatement
 import bank.Category
 import bank.CategoryDao
 import bank.Converters
+import bank.TransactionWithCategory
 import bank.Transaction
 import bank.TransactionDao
 import bank.Vendor
@@ -42,8 +43,9 @@ class BankRepository(
     private val accountDao: AccountDao,
     private val transactionDao: TransactionDao,
     private val vendorDao: VendorDao,
+    private val categoryDao: CategoryDao,
 ) {
-    constructor(db: AppDatabase) : this(db.accountDao(), db.transactionDao(), db.vendorDao()) {}
+    constructor(db: AppDatabase) : this(db.accountDao(), db.transactionDao(), db.vendorDao(), db.categoryDao()) {}
 
     suspend fun importStatement(stmt: BankStatement) = withContext(Dispatchers.IO) {
         var account = accountDao.getByName(stmt.getAccount().name)
@@ -70,4 +72,16 @@ class BankRepository(
             ))
         }
     }
+
+    suspend fun getCategories(): List<Category> = categoryDao.getAll()
+
+    suspend fun insertCategory(name: String): Long = categoryDao.insert(Category(name = name))
+
+    suspend fun deleteCategory(category: Category) = categoryDao.delete(category)
+
+    suspend fun getTransactionsWithCategories(): List<TransactionWithCategory> = transactionDao.getAllWithCategories()
+
+    suspend fun updateTransaction(transaction: Transaction) = transactionDao.update(transaction)
+
+    suspend fun getTransactionById(id: Long): Transaction? = transactionDao.getById(id)
 }
