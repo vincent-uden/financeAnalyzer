@@ -50,20 +50,30 @@ import java.time.format.DateTimeFormatter
 @Composable
 fun CategoriesView(db: AppDatabase) {
     var categories by remember { mutableStateOf<List<Category>>(emptyList()) }
+    var vendors by remember { mutableStateOf<List<VendorWithCategory>>(emptyList()) }
     var transactions by remember { mutableStateOf<List<TransactionWithCategory>>(emptyList()) }
     var selectedTransactionId by remember { mutableStateOf<Long?>(null) }
+    var selectedVendorId by remember { mutableStateOf<Long?>(null) }
+    val vendorCategoryMap = remember(vendors) { vendors.associate { it.id to it.categoryId } }
     val scope = rememberCoroutineScope()
     val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
     val repo = BankRepository(db)
 
     LaunchedEffect(Unit) {
         categories = repo.getCategories()
+        vendors = repo.getVendorsWithCategories()
         transactions = repo.getTransactionsWithCategories()
     }
 
     val reloadCategories = {
         scope.launch {
             categories = repo.getCategories()
+        }
+    }
+
+    val reloadVendors = {
+        scope.launch {
+            vendors = repo.getVendorsWithCategories()
         }
     }
 
@@ -75,7 +85,7 @@ fun CategoriesView(db: AppDatabase) {
 
     Row(modifier = Modifier.safeContentPadding().fillMaxSize()) {
         // Sidebar for categories
-        Column(modifier = Modifier.weight(1f).fillMaxHeight().padding(8.dp)) {
+        Column(modifier = Modifier.width(200.dp).fillMaxHeight().padding(8.dp)) {
             Text("Categories", modifier = Modifier.padding(bottom = 8.dp))
             LazyColumn(modifier = Modifier.weight(1f)) {
                 itemsIndexed(categories) { _, category ->
@@ -123,7 +133,7 @@ fun CategoriesView(db: AppDatabase) {
         }
 
         // Main area for transactions
-        Box(modifier = Modifier.weight(3f).fillMaxHeight()) {
+        Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
             Column(modifier = Modifier.fillMaxSize().padding(8.dp)) {
                 Text("Transactions", modifier = Modifier.padding(bottom = 8.dp))
                 Row(
@@ -138,7 +148,7 @@ fun CategoriesView(db: AppDatabase) {
                         textAlign = TextAlign.Right,
                         color = Color.White
                     )
-                    Text("Category", modifier = Modifier.width(100.dp), color = Color.White)
+                    Text("Category", modifier = Modifier.width(120.dp), color = Color.White)
                     Text("Actions", modifier = Modifier.width(100.dp), color = Color.White)
                 }
                 LazyColumn(modifier = Modifier.weight(1f)) {
@@ -165,9 +175,10 @@ fun CategoriesView(db: AppDatabase) {
                                 textAlign = TextAlign.Right,
                                 color = amountColor
                             )
+                            val isAuto = trans.categoryId != null && trans.categoryId == vendorCategoryMap[trans.vendor]
                             Text(
-                                trans.categoryName ?: "None",
-                                modifier = Modifier.width(100.dp),
+                                "${trans.categoryName ?: "None"}${if (isAuto) " (Auto)" else ""}",
+                                modifier = Modifier.width(120.dp),
                                 color = if (trans.categoryName == null) Theme[colors][foreground].copy(alpha = 0.5f) else Theme[colors][foreground]
                             )
                             UnstyledButton(
@@ -224,6 +235,77 @@ fun CategoriesView(db: AppDatabase) {
                         }
                         UnstyledButton(onClick = { selectedTransactionId = null }) {
                             Text("Cancel", color = Theme[colors][red])
+                        }
+                    }
+                }
+            }
+
+            // Overlay for vendor category selection
+            if (selectedVendorId != null) {
+                Box(
+                    modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.5f)).padding(8.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(
+                        modifier = Modifier.background(Color(0xFF1A1B26)).padding(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        val vendor = vendors.find { it.id == selectedVendorId }
+                        Text("Select Category for Vendor: ${vendor?.name ?: "Unknown"}", modifier = Modifier.padding(bottom = 8.dp))
+                        LazyColumn(modifier = Modifier.height(200.dp)) {
+                            item {
+                                UnstyledButton(onClick = {
+                                    scope.launch {
+                                        repo.setVendorCategory(selectedVendorId!!, null)
+                                        reloadVendors()
+                                        reloadTransactions()
+                                        selectedVendorId = null
+                                    }
+                                }) {
+                                    Text("None", modifier = Modifier.fillMaxWidth().padding(8.dp))
+                                }
+                            }
+                            itemsIndexed(categories) { _, category ->
+                                UnstyledButton(onClick = {
+                                    scope.launch {
+                                        repo.setVendorCategory(selectedVendorId!!, category.id)
+                                        reloadVendors()
+                                        reloadTransactions()
+                                        selectedVendorId = null
+                                    }
+                                }) {
+                                    Text(category.name, modifier = Modifier.fillMaxWidth().padding(8.dp))
+                                }
+                            }
+                        }
+                        UnstyledButton(onClick = { selectedVendorId = null }) {
+                            Text("Cancel", color = Theme[colors][red])
+                        }
+                    }
+                }
+            }
+        }
+
+        // Sidebar for vendors
+        Column(modifier = Modifier.width(500.dp).fillMaxHeight().padding(8.dp)) {
+            Text("Vendors", modifier = Modifier.padding(bottom = 8.dp))
+            LazyColumn(modifier = Modifier.weight(1f)) {
+                itemsIndexed(vendors) { _, vendor ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(vendor.name, modifier = Modifier.weight(1f))
+                        Text(
+                            vendor.categoryName ?: "None",
+                            modifier = Modifier.weight(1f),
+                            color = if (vendor.categoryName == null) Theme[colors][foreground].copy(alpha = 0.5f) else Theme[colors][foreground]
+                        )
+                        UnstyledButton(onClick = {
+                            selectedVendorId = vendor.id
+                        }) {
+                            Text("Edit")
                         }
                     }
                 }

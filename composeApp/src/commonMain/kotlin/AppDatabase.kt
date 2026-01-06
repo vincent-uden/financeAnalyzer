@@ -16,10 +16,11 @@ import bank.Transaction
 import bank.TransactionDao
 import bank.Vendor
 import bank.VendorDao
+import bank.VendorWithCategory
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-@Database(entities = [TodoEntity::class, Account::class, Transaction::class, Vendor::class, Category::class], version = 3)
+@Database(entities = [TodoEntity::class, Account::class, Transaction::class, Vendor::class, Category::class], version = 4)
 @ConstructedBy(AppDatabaseConstructor::class)
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
@@ -59,7 +60,8 @@ class BankRepository(
             if (vendor == null) {
                 val id = vendorDao.insert(Vendor(
                     name = vendorName,
-                    userDefinedName = null
+                    userDefinedName = null,
+                    categoryId = null
                 ))
                 vendor = vendorDao.getById(id)
             }
@@ -68,7 +70,7 @@ class BankRepository(
                 amount = amount,
                 vendor = vendor!!.id,
                 account = account!!.id,
-                categoryId = null,
+                categoryId = vendor.categoryId,
             ))
         }
     }
@@ -84,4 +86,36 @@ class BankRepository(
     suspend fun updateTransaction(transaction: Transaction) = transactionDao.update(transaction)
 
     suspend fun getTransactionById(id: Long): Transaction? = transactionDao.getById(id)
+
+    suspend fun setVendorCategory(vendorId: Long, categoryId: Long?) {
+        val vendor = vendorDao.getById(vendorId) ?: return
+        vendorDao.update(vendor.copy(categoryId = categoryId))
+        applyVendorCategoryToTransactions(vendorId)
+    }
+
+    suspend fun getVendorsWithCategories(): List<VendorWithCategory> = vendorDao.getAllWithCategories()
+
+    suspend fun applyVendorCategoryToTransactions(vendorId: Long) {
+        val vendor = vendorDao.getById(vendorId) ?: return
+        val transactionsToUpdate = transactionDao.getAllWithCategories().filter {
+            it.vendor == vendorId && it.categoryId == null
+        }
+        transactionsToUpdate.forEach { transaction ->
+            transactionDao.update(Transaction(
+                id = transaction.id,
+                transactionDate = transaction.transactionDate,
+                amount = transaction.amount,
+                vendor = transaction.vendor,
+                account = transaction.account,
+                categoryId = vendor.categoryId
+            ))
+        }
+    }
+
+    suspend fun insertTransaction(transaction: Transaction): Long {
+        val vendor = vendorDao.getById(transaction.vendor)
+        val categoryId = transaction.categoryId ?: vendor?.categoryId
+        val transactionToInsert = transaction.copy(categoryId = categoryId)
+        return transactionDao.insert(transactionToInsert)
+    }
 }

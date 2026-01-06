@@ -109,11 +109,6 @@ val AppTheme = buildPlatformTheme {
     defaultTextStyle = TextStyle(color = Color(0xFFC0CAF5))
 }
 
-// TODO(Next):
-//  - Transactions by vendor
-//    - Tag transaction
-//  - Make a vendor always correspond to a tag
-
 
 @Composable
 @Preview

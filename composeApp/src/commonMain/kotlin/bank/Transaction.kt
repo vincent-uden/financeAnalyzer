@@ -13,6 +13,14 @@ import androidx.room.TypeConverter
 import java.util.Date
 
 @Entity(
+    foreignKeys = [
+        ForeignKey(
+            entity = Category::class,
+            parentColumns = arrayOf("id"),
+            childColumns = arrayOf("categoryId"),
+            onDelete = ForeignKey.SET_NULL
+        )
+    ],
     indices = [
         Index(value = ["name"], unique = true)
     ]
@@ -21,12 +29,16 @@ data class Vendor(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val name: String,
     val userDefinedName: String?,
+    val categoryId: Long?,
 )
 
 @Dao
 interface VendorDao {
     @Insert
     suspend fun insert(value: Vendor): Long
+
+    @Update
+    suspend fun update(value: Vendor)
 
     @Query("SELECT count(*) FROM `Vendor`")
     suspend fun count(): Long
@@ -36,7 +48,18 @@ interface VendorDao {
 
     @Query("SELECT * FROM `Vendor` WHERE id = :id")
     suspend fun getById(id: Long): Vendor?
+
+    @Query("SELECT v.*, c.name as categoryName FROM `Vendor` v LEFT JOIN Category c ON v.categoryId = c.id ORDER BY v.name")
+    suspend fun getAllWithCategories(): List<VendorWithCategory>
 }
+
+data class VendorWithCategory(
+    val id: Long,
+    val name: String,
+    val userDefinedName: String?,
+    val categoryId: Long?,
+    val categoryName: String?,
+)
 
 @Entity(
     indices = [
@@ -134,7 +157,7 @@ data class TransactionWithCategory(
 @Dao
 interface TransactionDao {
     @Insert
-    suspend fun insert(value: Transaction)
+    suspend fun insert(value: Transaction): Long
 
     @Update
     suspend fun update(value: Transaction)
