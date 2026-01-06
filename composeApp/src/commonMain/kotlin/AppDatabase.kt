@@ -8,6 +8,8 @@ import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import bank.Account
 import bank.AccountDao
 import bank.BankStatement
+import bank.Category
+import bank.CategoryDao
 import bank.Converters
 import bank.Transaction
 import bank.TransactionDao
@@ -16,7 +18,7 @@ import bank.VendorDao
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-@Database(entities = [TodoEntity::class, Account::class, Transaction::class, Vendor::class], version = 2)
+@Database(entities = [TodoEntity::class, Account::class, Transaction::class, Vendor::class, Category::class], version = 3)
 @ConstructedBy(AppDatabaseConstructor::class)
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
@@ -24,6 +26,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun accountDao(): AccountDao
     abstract fun transactionDao(): TransactionDao
     abstract fun vendorDao(): VendorDao
+    abstract fun categoryDao(): CategoryDao
 }
 
 @Suppress("KotlinNoActualForExpect")
@@ -63,6 +66,7 @@ class BankRepository(
                 amount = amount,
                 vendor = vendor!!.id,
                 account = account!!.id,
+                categoryId = null,
             ))
         }
     }

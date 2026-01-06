@@ -1,0 +1,200 @@
+package bank
+
+import AppDatabase
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeContentPadding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import colors
+import background
+import backgroundLighter
+import com.composeunstyled.Text
+import com.composeunstyled.TextField
+import com.composeunstyled.TextInput
+import com.composeunstyled.UnstyledButton
+import com.composeunstyled.theme.Theme
+import green
+import kotlinx.coroutines.launch
+import red
+import java.time.LocalDate
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+
+@Composable
+fun CategoriesView(db: AppDatabase) {
+    var categories by remember { mutableStateOf<List<Category>>(emptyList()) }
+    var transactions by remember { mutableStateOf<List<TransactionWithCategory>>(emptyList()) }
+    var selectedTransactionId by remember { mutableStateOf<Long?>(null) }
+    val scope = rememberCoroutineScope()
+    val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
+
+    LaunchedEffect(Unit) {
+        categories = db.categoryDao().getAll()
+        transactions = db.transactionDao().getAllWithCategories()
+    }
+
+    val reloadCategories = {
+        scope.launch {
+            categories = db.categoryDao().getAll()
+        }
+    }
+
+    val reloadTransactions = {
+        scope.launch {
+            transactions = db.transactionDao().getAllWithCategories()
+        }
+    }
+
+    Row(modifier = Modifier.safeContentPadding().fillMaxSize()) {
+        // Sidebar for categories
+        Column(modifier = Modifier.weight(1f).fillMaxHeight().padding(8.dp)) {
+            Text("Categories", modifier = Modifier.padding(bottom = 8.dp))
+            LazyColumn(modifier = Modifier.weight(1f)) {
+                itemsIndexed(categories) { _, category ->
+                    Row(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text(category.name, modifier = Modifier.weight(1f))
+                        UnstyledButton(onClick = {
+                            scope.launch {
+                                db.categoryDao().delete(category)
+                                reloadCategories()
+                                reloadTransactions()
+                            }
+                        }) {
+                            Text("Delete", color = Theme[colors][red])
+                        }
+                    }
+                }
+            }
+            var newCategoryName by remember { mutableStateOf("") }
+            Row(modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
+                TextField(
+                    state = remember { androidx.compose.foundation.text.input.TextFieldState(newCategoryName) },
+                    modifier = Modifier.weight(1f)
+                ) {
+                    TextInput()
+                }
+                UnstyledButton(onClick = {
+                    val name = newCategoryName.trim()
+                    if (name.isNotEmpty()) {
+                        scope.launch {
+                            db.categoryDao().insert(Category(name = name))
+                            newCategoryName = ""
+                            reloadCategories()
+                        }
+                    }
+                }) {
+                    Text("Add")
+                }
+            }
+        }
+
+        // Main area for transactions
+        Box(modifier = Modifier.weight(3f).fillMaxHeight()) {
+            Column(modifier = Modifier.fillMaxSize().padding(8.dp)) {
+                Text("Transactions", modifier = Modifier.padding(bottom = 8.dp))
+                Row(modifier = Modifier.fillMaxWidth().background(Color(0xFF35374B)).padding(8.dp)) {
+                    Text("Date", modifier = Modifier.weight(2f), color = Color.White)
+                    Text("Vendor", modifier = Modifier.weight(2f), color = Color.White)
+                    Text("Amount (SEK)", modifier = Modifier.weight(1f), color = Color.White)
+                    Text("Category", modifier = Modifier.weight(1f), color = Color.White)
+                    Text("Actions", modifier = Modifier.weight(1f), color = Color.White)
+                }
+                LazyColumn(modifier = Modifier.weight(1f), state = rememberLazyListState()) {
+                    itemsIndexed(transactions) { index, trans ->
+                        val bgColor = if (index % 2 == 0) Color(0xFF1A1B26) else Color(0xFF35374B)
+                        val amountColor = if (trans.amount > 0) Theme[colors][green] else Theme[colors][red]
+                        Row(
+                            modifier = Modifier.fillMaxWidth().background(bgColor).padding(vertical = 4.dp, horizontal = 8.dp)
+                        ) {
+                            Text(
+                                formatter.format(
+                                    LocalDate.ofInstant(
+                                        trans.transactionDate.toInstant(),
+                                        ZoneId.systemDefault()
+                                    )
+                                ), modifier = Modifier.weight(2f)
+                            )
+                            Text(trans.vendorName ?: "Unknown", modifier = Modifier.weight(2f))
+                            Text(String.format("%.2f", trans.amount / 100.0), modifier = Modifier.weight(1f), textAlign = TextAlign.Right, color = amountColor)
+                            Text(trans.categoryName ?: "None", modifier = Modifier.weight(1f))
+                            UnstyledButton(onClick = { selectedTransactionId = trans.id }) {
+                                Text("Assign", modifier = Modifier.weight(1f))
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Overlay for category selection
+            if (selectedTransactionId != null) {
+                Box(
+                    modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.5f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(
+                        modifier = Modifier.background(Color(0xFF1A1B26)).padding(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text("Select Category for Transaction", modifier = Modifier.padding(bottom = 8.dp))
+                        LazyColumn(modifier = Modifier.height(200.dp)) {
+                            item {
+                                UnstyledButton(onClick = {
+                                    scope.launch {
+                                        val trans = db.transactionDao().getById(selectedTransactionId!!)
+                                        if (trans != null) {
+                                            db.transactionDao().update(trans.copy(categoryId = null))
+                                            reloadTransactions()
+                                        }
+                                        selectedTransactionId = null
+                                    }
+                                }) {
+                                    Text("None", modifier = Modifier.fillMaxWidth().padding(8.dp))
+                                }
+                            }
+                            itemsIndexed(categories) { _, category ->
+                                UnstyledButton(onClick = {
+                                    scope.launch {
+                                        val trans = db.transactionDao().getById(selectedTransactionId!!)
+                                        if (trans != null) {
+                                            db.transactionDao().update(trans.copy(categoryId = category.id))
+                                            reloadTransactions()
+                                        }
+                                        selectedTransactionId = null
+                                    }
+                                }) {
+                                    Text(category.name, modifier = Modifier.fillMaxWidth().padding(8.dp))
+                                }
+                            }
+                        }
+                        UnstyledButton(onClick = { selectedTransactionId = null }) {
+                            Text("Cancel", color = Theme[colors][red])
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

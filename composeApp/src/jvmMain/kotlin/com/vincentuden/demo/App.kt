@@ -29,6 +29,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.room.RoomDatabase
 import bank.BankStatementImporter
+import bank.CategoriesView
 import bank.HandelsbankenStatement
 import colors
 
@@ -108,13 +109,19 @@ val AppTheme = buildPlatformTheme {
     defaultTextStyle = TextStyle(color = Color(0xFFC0CAF5))
 }
 
+// TODO(Next):
+//  - Transactions by vendor
+//    - Tag transaction
+//  - Make a vendor always correspond to a tag
+
+
 @Composable
 @Preview
 fun App(db: AppDatabase) {
     val state = remember {
         TabGroupState(
             initialTab = "Front page",
-            tabs = listOf("Front page", "Import XLSX"),
+            tabs = listOf("Front page", "Import XLSX", "Categories"),
         )
     }
 
@@ -131,6 +138,9 @@ fun App(db: AppDatabase) {
                             Tab(key = "Import XLSX") {
                                 TabText("Import XLSX", state.selectedTab == "Import XLSX")
                             }
+                            Tab(key = "Categories") {
+                                TabText("Categories", state.selectedTab == "Categories")
+                            }
                         }
                     }
                     Row(modifier = Modifier.fillMaxWidth().height(16.dp)) {}
@@ -139,6 +149,9 @@ fun App(db: AppDatabase) {
                     }
                     TabPanel(key = "Import XLSX") {
                         BankStatementImporter(db)
+                    }
+                    TabPanel(key = "Categories") {
+                        CategoriesView(db)
                     }
                 }
             }
