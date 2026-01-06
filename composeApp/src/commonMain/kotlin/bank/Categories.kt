@@ -61,6 +61,8 @@ fun CategoriesView(db: AppDatabase) {
     var transactions by remember { mutableStateOf<List<TransactionWithCategory>>(emptyList()) }
     var selectedTransactionId by remember { mutableStateOf<Long?>(null) }
     var selectedVendorId by remember { mutableStateOf<Long?>(null) }
+    var selectedCategoryIds by remember { mutableStateOf<Set<Long?>>(emptySet()) }
+    var selectedVendorIds by remember { mutableStateOf<Set<Long>>(emptySet()) }
     val vendorCategoryMap = remember(vendors) { vendors.associate { it.id to it.categoryId } }
     val scope = rememberCoroutineScope()
     val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
@@ -90,17 +92,57 @@ fun CategoriesView(db: AppDatabase) {
         }
     }
 
+    // Filter transactions based on selected categories and vendors
+    val filteredTransactions = remember(transactions, selectedCategoryIds, selectedVendorIds) {
+        transactions.filter { trans ->
+            val categoryMatches = selectedCategoryIds.isEmpty() ||
+                    (trans.categoryId in selectedCategoryIds) ||
+                    (trans.categoryId == null && null in selectedCategoryIds)
+            val vendorMatches = selectedVendorIds.isEmpty() || (trans.vendor in selectedVendorIds)
+            categoryMatches && vendorMatches
+        }
+    }
+
     Row(modifier = Modifier.safeContentPadding().fillMaxSize()) {
-        // Sidebar for categories
-        Column(modifier = Modifier.width(200.dp).fillMaxHeight().padding(8.dp)) {
+                // Sidebar for categories
+                Column(modifier = Modifier.width(200.dp).fillMaxHeight().padding(8.dp)) {
             Text("Categories", modifier = Modifier.padding(bottom = 8.dp))
             LazyColumn(modifier = Modifier.weight(1f)) {
+                // "None" category (uncategorized)
+                item {
+                    val isSelected = null in selectedCategoryIds
+                    UnstyledButton(
+                        onClick = {
+                            selectedCategoryIds = if (null in selectedCategoryIds) {
+                                selectedCategoryIds - null
+                            } else {
+                                selectedCategoryIds + null
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth().background(if (isSelected) Color(0xFF2A2D3A) else Color.Transparent)
+                    ) {
+                        Text("None", color = Theme[colors][foreground].copy(alpha = 0.5f), modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp))
+                    }
+                }
+                // Regular categories
                 itemsIndexed(categories) { _, category ->
+                    val isSelected = category.id in selectedCategoryIds
                     Row(
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).background(if (isSelected) Color(0xFF2A2D3A) else Color.Transparent),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Text(category.name, modifier = Modifier.weight(1f))
+                        UnstyledButton(
+                            onClick = {
+                                selectedCategoryIds = if (category.id in selectedCategoryIds) {
+                                    selectedCategoryIds - category.id
+                                } else {
+                                    selectedCategoryIds + category.id
+                                }
+                            },
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text(category.name)
+                        }
                         UnstyledButton(onClick = {
                             scope.launch {
                                 repo.deleteCategory(category)
@@ -142,6 +184,18 @@ fun CategoriesView(db: AppDatabase) {
         // Main area for transactions
         Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
             Column(modifier = Modifier.fillMaxSize().padding(8.dp)) {
+                // Clear Filters button
+                Row(modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp), horizontalArrangement = Arrangement.End) {
+                    AppButton(
+                        content = "Clear Filters",
+                        onClick = {
+                            selectedCategoryIds = emptySet()
+                            selectedVendorIds = emptySet()
+                        },
+                        type = AppButtonVariant.CONFIRM
+                    )
+                }
+                Text("DEBUG: Transactions count: ${filteredTransactions.size}", modifier = Modifier.padding(bottom = 8.dp))
                 Text("Transactions", modifier = Modifier.padding(bottom = 8.dp))
                 Row(
                     modifier = Modifier.fillMaxWidth().background(Color(0xFF35374B)).padding(8.dp),
@@ -159,7 +213,7 @@ fun CategoriesView(db: AppDatabase) {
                     Text("Actions", modifier = Modifier.width(100.dp), color = Color.White)
                 }
                 LazyColumn(modifier = Modifier.weight(1f)) {
-                    itemsIndexed(transactions) { index, trans ->
+                    itemsIndexed(filteredTransactions) { index, trans ->
                         val bgColor = if (index % 2 == 0) Color(0xFF1A1B26) else Color(0xFF35374B)
                         val amountColor = if (trans.amount > 0) Theme[colors][green] else Theme[colors][red]
                         Row(
@@ -243,12 +297,24 @@ fun CategoriesView(db: AppDatabase) {
             Text("Vendors", modifier = Modifier.padding(bottom = 8.dp))
             LazyColumn(modifier = Modifier.weight(1f)) {
                 itemsIndexed(vendors) { _, vendor ->
+                    val isSelected = vendor.id in selectedVendorIds
                     Row(
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).background(if (isSelected) Color(0xFF2A2D3A) else Color.Transparent),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(vendor.name, modifier = Modifier.weight(1f))
+                        UnstyledButton(
+                            onClick = {
+                                selectedVendorIds = if (vendor.id in selectedVendorIds) {
+                                    selectedVendorIds - vendor.id
+                                } else {
+                                    selectedVendorIds + vendor.id
+                                }
+                            },
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text(vendor.name)
+                        }
                         Text(
                             vendor.categoryName ?: "None",
                             modifier = Modifier.weight(1f),
