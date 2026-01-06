@@ -1,6 +1,7 @@
 package bank
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -14,6 +15,7 @@ import androidx.compose.foundation.layout.safeContentPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -89,20 +91,20 @@ fun CategoriesView(db: AppDatabase) {
                     }
                 }
             }
-            var newCategoryName by remember { mutableStateOf("") }
+            val newCategoryState = remember { androidx.compose.foundation.text.input.TextFieldState() }
             Row(modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
                 TextField(
-                    state = remember { androidx.compose.foundation.text.input.TextFieldState(newCategoryName) },
-                    modifier = Modifier.weight(1f)
+                    state = newCategoryState,
+                    modifier = Modifier.weight(1f).background(Color(0xFF35374B)).border(1.dp, Color.White, RoundedCornerShape(4.dp))
                 ) {
                     TextInput()
                 }
                 UnstyledButton(onClick = {
-                    val name = newCategoryName.trim()
+                    val name = newCategoryState.text.toString().trim()
                     if (name.isNotEmpty()) {
                         scope.launch {
                             repo.insertCategory(name)
-                            newCategoryName = ""
+                            newCategoryState.edit { replace(0, length, "") }
                             reloadCategories()
                         }
                     }
